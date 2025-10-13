@@ -1,18 +1,18 @@
 //
-//  LabDashboardView.swift
+//  PredictionView.swift
 //  Labify
 //
-//  Created by F_s on 9/22/25.
+//  Created by KITS on 10/13/25.
 //
 
 import SwiftUI
 
-struct LabDashboardView: View {
+struct PredictionView: View {
     var body: some View {
         Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
     }
 }
 
 #Preview {
-    LabDashboardView()
+    PredictionView()
 }

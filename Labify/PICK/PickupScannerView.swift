@@ -30,7 +30,7 @@ struct PickupScannerView: View {
 							.font(.system(size: 60))
 							.foregroundColor(.blue)
 						
-						Text("오호코빠 저번 영 위 카메라를\n작동시킵니다.")
+						Text(" QR코드를\n스캔해주세요.")
 							.font(.system(size: 14))
 							.foregroundColor(.gray)
 							.multilineTextAlignment(.center)

@@ -11,7 +11,7 @@ import SwiftUI
 struct LabifyApp: App {
     var body: some Scene {
         WindowGroup {
-            PickMainTabView()
+            LoginView()
         }
     }
 }
