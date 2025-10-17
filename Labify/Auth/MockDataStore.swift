@@ -46,14 +46,6 @@ class MockDataStore {
         print("✅ 회원가입 완료: \(request.email)")
     }
     
-    // MARK: - 인증 코드 전송
-    func sendVerificationCode(email: String) async throws {
-        let code = Int.random(in: 100000...999999)
-        verificationCodes[email] = code
-        print("📧 인증 코드 전송: \(email) -> \(code)")
-        print("⚠️ 위의 6자리 코드를 입력하세요!")
-    }
-    
     // MARK: - 인증 코드 확인
     func verifyCode(email: String, code: Int) async throws {
         guard let savedCode = verificationCodes[email] else {
@@ -87,8 +79,8 @@ class MockDataStore {
         print("🔑 Access Token: \(accessToken)")
         
         return TokenResponse(
-            access_token: accessToken,
-            refresh_token: refreshToken
+            accessToken: accessToken,
+            refreshToken: refreshToken
         )
     }
     
@@ -114,8 +106,8 @@ class MockDataStore {
         print("🔑 New Access Token: \(newAccessToken)")
         
         return TokenResponse(
-            access_token: newAccessToken,
-            refresh_token: refreshToken
+            accessToken: newAccessToken,
+            refreshToken: refreshToken
         )
     }
     

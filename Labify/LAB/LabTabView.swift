@@ -14,7 +14,10 @@ struct LabTabView: View {
                 .tabItem {
                     Label("대시보드", systemImage: "square.grid.2x2")
                 }
-            
+//            QRCodeView()
+//                .tabItem {
+//                    Label("QR 코드", systemImage: "qrcode")
+//                }
             LabRegistrationView()
                 .tabItem {
                     Label("등록", systemImage: "plus.circle")

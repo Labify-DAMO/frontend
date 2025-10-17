@@ -15,6 +15,9 @@ class AuthViewModel: ObservableObject {
     @Published var isAuthenticated = false
     @Published var userInfo: UserInfo?
     
+    // 이메일 인증 코드 전송 성공 여부
+    @Published var isVerificationCodeSent = false
+    
     // UI에서 바인딩할 프로퍼티들
     @Published var email = ""
     @Published var password = ""
@@ -48,6 +51,16 @@ class AuthViewModel: ObservableObject {
             try await AuthService.signup(request: request)
             isLoading = false
             return true
+        } catch let error as NetworkError {
+            isLoading = false
+            
+            // 404 에러 처리: 이미 가입된 이메일
+            if case .httpError(let statusCode) = error, statusCode == 404 {
+                errorMessage = "이미 가입된 이메일입니다. 로그인을 시도해주세요."
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            return false
         } catch {
             isLoading = false
             errorMessage = error.localizedDescription
@@ -59,11 +72,26 @@ class AuthViewModel: ObservableObject {
     func sendVerificationCode() async -> Bool {
         isLoading = true
         errorMessage = nil
+        isVerificationCodeSent = false
         
         do {
             try await AuthService.sendVerificationCode(email: email)
             isLoading = false
+            isVerificationCodeSent = true
             return true
+        } catch let error as NetworkError {
+            isLoading = false
+            
+            // 404 에러 처리: 이미 인증 코드가 전송됨
+            if case .httpError(let statusCode) = error, statusCode == 404 {
+                errorMessage = "인증 코드가 이미 전송되었습니다.\n아래 '코드 재전송' 버튼을 눌러주세요."
+                // 404여도 일단 다음 단계로 진행 가능하게
+                isVerificationCodeSent = true
+                return true
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            return false
         } catch {
             isLoading = false
             errorMessage = error.localizedDescription
@@ -82,6 +110,16 @@ class AuthViewModel: ObservableObject {
             try await AuthService.verifyCode(request: request)
             isLoading = false
             return true
+        } catch let error as NetworkError {
+            isLoading = false
+            
+            // 400 에러: 코드 불일치
+            if case .httpError(let statusCode) = error, statusCode == 400 {
+                errorMessage = "인증 코드가 일치하지 않습니다.\n다시 확인해주세요."
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            return false
         } catch {
             isLoading = false
             errorMessage = error.localizedDescription
@@ -98,8 +136,8 @@ class AuthViewModel: ObservableObject {
         
         do {
             let response = try await AuthService.login(request: request)
-            accessToken = response.access_token
-            refreshToken = response.refresh_token
+            accessToken = response.accessToken
+            refreshToken = response.refreshToken
             saveTokens()
             isAuthenticated = true
             
@@ -107,6 +145,16 @@ class AuthViewModel: ObservableObject {
             try await fetchUserInfo()
             isLoading = false
             return true
+        } catch let error as NetworkError {
+            isLoading = false
+            
+            // 401 에러: 인증 실패
+            if case .httpError(let statusCode) = error, statusCode == 401 {
+                errorMessage = "이메일 또는 비밀번호가 일치하지 않습니다."
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            return false
         } catch {
             isLoading = false
             errorMessage = error.localizedDescription
@@ -145,8 +193,8 @@ class AuthViewModel: ObservableObject {
         
         do {
             let response = try await AuthService.refreshToken(request)
-            accessToken = response.access_token
-            self.refreshToken = response.refresh_token
+            accessToken = response.accessToken
+            self.refreshToken = response.refreshToken
             saveTokens()
             return true
         } catch {
@@ -189,8 +237,8 @@ class AuthViewModel: ObservableObject {
     }
 }
 
+
 // MARK: - Models
-struct EmptyResponse: Codable {}
 struct SignupRequest: Codable {
     let name: String
     let email: String
@@ -199,15 +247,23 @@ struct SignupRequest: Codable {
     let affiliation: String
     let agreeTerms: Bool
 }
-struct EmailRequest: Codable { let email: String }
-struct VerifyCodeRequest: Codable { let email: String; let code: Int }
-struct LoginRequest: Codable { let email: String; let password: String }
-struct TokenResponse: Codable { let access_token: String; let refresh_token: String }
-struct RefreshTokenRequest: Codable { let refresh_token: String }
-struct UserInfo: Codable {
-    let userId: Int
-    let name: String
+
+struct EmailRequest: Codable {
     let email: String
-    let role: String
-    let affiliation: String
 }
+
+struct VerifyCodeRequest: Codable {
+    let email: String
+    let code: Int
+}
+
+struct LoginRequest: Codable {
+    let email: String
+    let password: String
+}
+
+struct RefreshTokenRequest: Codable {
+    let refresh_token: String
+}
+
+// TokenResponse와 UserInfo는 Models.swift에 정의되어 있음

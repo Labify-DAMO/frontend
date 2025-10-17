@@ -169,18 +169,25 @@ struct LoginView: View {
             }
             .padding(.horizontal, 32)
             .navigationDestination(isPresented: $showSignup) {
-                SignupView()
+                SignUpView()
             }
             .navigationDestination(isPresented: $navigateToRoleView) {
                 // role에 따라 화면 분기
                 switch vm.userInfo?.role {
                 case "LAB_MANAGER":
-                    LabManagerView()
+                    LabTabView()
                 case "PICKUP_MANAGER":
                     //PickupManagerView()
-                    ListTabView()
+                    PickTabView()
                 case "FACILITY_MANAGER":
-                    FacilityManagerView()
+                    FacTabView(userInfo: UserInfo(
+                        userId: 3,
+                        name: "이시설",
+                        email: "facility@test.com",
+                        role: "FACILITY_MANAGER",
+                        affiliation: "종합관리센터"
+                    ),
+                    authVM: AuthViewModel())
                 default:
                     Text("알 수 없는 역할")
                 }
@@ -189,10 +196,6 @@ struct LoginView: View {
     }
 }
 
-// MARK: - 예제 Role View
-struct LabManagerView: View { var body: some View { Text("Lab Manager 화면") } }
-struct PickupManagerView: View { var body: some View { Text("Pickup Manager 화면") } }
-struct FacilityManagerView: View { var body: some View { Text("Facility Manager 화면") } }
 
 #Preview {
     LoginView()
