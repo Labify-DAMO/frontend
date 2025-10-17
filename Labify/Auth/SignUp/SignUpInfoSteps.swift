@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-// MARK: - Step 5: 이름 입력
-struct Step5NameInput: View {
+// MARK: - Step 4: 이름 입력
+struct Step4NameInput: View {
     @ObservedObject var vm: AuthViewModel
     let canProceed: Bool
     let onNext: () -> Void
@@ -58,8 +58,8 @@ struct Step5NameInput: View {
     }
 }
 
-// MARK: - Step 6: 역할 선택
-struct Step6RoleSelection: View {
+// MARK: - Step 5: 역할 선택
+struct Step5RoleSelection: View {
     @Binding var selectedRole: UserRole?
     let canProceed: Bool
     let onNext: () -> Void
@@ -118,8 +118,8 @@ struct Step6RoleSelection: View {
     }
 }
 
-// MARK: - Step 7: 소속 입력
-struct Step7AffiliationInput: View {
+// MARK: - Step 6: 소속 입력 + 회원가입
+struct Step6AffiliationInput: View {
     @ObservedObject var vm: AuthViewModel
     let selectedRole: UserRole?
     let canProceed: Bool
@@ -159,7 +159,7 @@ struct Step7AffiliationInput: View {
                 .frame(height: 50)
             
             Button(action: onNext) {
-                Text(vm.isLoading ? "가입 중..." : "회원가입 완료")
+                Text(vm.isLoading ? "가입 중..." : "회원가입")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)

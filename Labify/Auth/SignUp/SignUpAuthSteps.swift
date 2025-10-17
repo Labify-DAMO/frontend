@@ -42,7 +42,7 @@ struct Step1EmailInput: View {
             TermsCheckbox(isChecked: $vm.agreeTerms)
             
             Button(action: onNext) {
-                Text(vm.isLoading ? "전송 중..." : "다음")
+                Text("다음")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -50,15 +50,140 @@ struct Step1EmailInput: View {
                     .background(canProceed ? Color.black : Color(white: 0.85))
                     .cornerRadius(10)
             }
-            .disabled(!canProceed || vm.isLoading)
+            .disabled(!canProceed)
             .animation(.easeInOut(duration: 0.2), value: canProceed)
             .padding(.top, 24)
         }
     }
 }
 
-// MARK: - Step 2: 인증 코드 입력
-struct Step2VerificationCode: View {
+// MARK: - Step 2: 비밀번호 입력
+struct Step2PasswordInput: View {
+    @ObservedObject var vm: AuthViewModel
+    @Binding var showPassword: Bool
+    let canProceed: Bool
+    let onNext: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Text("비밀번호를 입력하세요")
+                .font(.system(size: 24, weight: .bold))
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.bottom, 8)
+            
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("비밀번호")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                    
+                    HStack {
+                        if showPassword {
+                            TextField("비밀번호를 입력해주세요.", text: $vm.password)
+                        } else {
+                            SecureField("비밀번호를 입력해주세요.", text: $vm.password)
+                        }
+                        
+                        Button(action: {
+                            showPassword.toggle()
+                        }) {
+                            Image(systemName: showPassword ? "eye.slash" : "eye")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .padding()
+                    .background(Color(white: 0.96))
+                    .cornerRadius(10)
+                }
+                
+                DisabledTextField(label: "이메일", value: vm.email)
+                
+                TermsCheckbox(isChecked: $vm.agreeTerms)
+            }
+            
+            Spacer()
+                .frame(height: 50)
+            
+            Button(action: onNext) {
+                Text("다음")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(canProceed ? Color.black : Color(white: 0.85))
+                    .cornerRadius(10)
+            }
+            .disabled(!canProceed)
+            .animation(.easeInOut(duration: 0.2), value: canProceed)
+        }
+    }
+}
+
+// MARK: - Step 3: 비밀번호 확인
+struct Step3PasswordConfirm: View {
+    @ObservedObject var vm: AuthViewModel
+    @Binding var confirmPassword: String
+    @Binding var showPassword: Bool
+    let canProceed: Bool
+    let onNext: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Text("비밀번호를 확인하세요")
+                .font(.system(size: 24, weight: .bold))
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.bottom, 8)
+            
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("비밀번호 확인")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                    
+                    HStack {
+                        if showPassword {
+                            TextField("비밀번호를 다시 입력해주세요.", text: $confirmPassword)
+                        } else {
+                            SecureField("비밀번호를 다시 입력해주세요.", text: $confirmPassword)
+                        }
+                        
+                        Button(action: {
+                            showPassword.toggle()
+                        }) {
+                            Image(systemName: showPassword ? "eye.slash" : "eye")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .padding()
+                    .background(Color(white: 0.96))
+                    .cornerRadius(10)
+                }
+                
+                DisabledTextField(label: "이메일", value: vm.email)
+                
+                TermsCheckbox(isChecked: $vm.agreeTerms)
+            }
+            
+            Spacer()
+                .frame(height: 50)
+            
+            Button(action: onNext) {
+                Text("다음")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(canProceed ? Color.black : Color(white: 0.85))
+                    .cornerRadius(10)
+            }
+            .disabled(!canProceed)
+            .animation(.easeInOut(duration: 0.2), value: canProceed)
+        }
+    }
+}
+
+// MARK: - Step 7: 인증 코드 입력 (회원가입 후)
+struct Step7VerificationCode: View {
     @ObservedObject var vm: AuthViewModel
     @Binding var verificationCode: String
     @FocusState.Binding var isCodeFieldFocused: Bool
@@ -159,130 +284,5 @@ struct Step2VerificationCode: View {
         let minutes = seconds / 60
         let seconds = seconds % 60
         return String(format: "%02d:%02d", minutes, seconds)
-    }
-}
-
-// MARK: - Step 3: 비밀번호 입력
-struct Step3PasswordInput: View {
-    @ObservedObject var vm: AuthViewModel
-    @Binding var showPassword: Bool
-    let canProceed: Bool
-    let onNext: () -> Void
-    
-    var body: some View {
-        VStack(spacing: 24) {
-            Text("비밀번호를 입력하세요")
-                .font(.system(size: 24, weight: .bold))
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.bottom, 8)
-            
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("비밀번호")
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
-                    
-                    HStack {
-                        if showPassword {
-                            TextField("비밀번호를 입력해주세요.", text: $vm.password)
-                        } else {
-                            SecureField("비밀번호를 입력해주세요.", text: $vm.password)
-                        }
-                        
-                        Button(action: {
-                            showPassword.toggle()
-                        }) {
-                            Image(systemName: showPassword ? "eye.slash" : "eye")
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding()
-                    .background(Color(white: 0.96))
-                    .cornerRadius(10)
-                }
-                
-                DisabledTextField(label: "이메일", value: vm.email)
-                
-                TermsCheckbox(isChecked: $vm.agreeTerms)
-            }
-            
-            Spacer()
-                .frame(height: 50)
-            
-            Button(action: onNext) {
-                Text("다음")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(canProceed ? Color.black : Color(white: 0.85))
-                    .cornerRadius(10)
-            }
-            .disabled(!canProceed)
-            .animation(.easeInOut(duration: 0.2), value: canProceed)
-        }
-    }
-}
-
-// MARK: - Step 4: 비밀번호 확인
-struct Step4PasswordConfirm: View {
-    @ObservedObject var vm: AuthViewModel
-    @Binding var confirmPassword: String
-    @Binding var showPassword: Bool
-    let canProceed: Bool
-    let onNext: () -> Void
-    
-    var body: some View {
-        VStack(spacing: 24) {
-            Text("비밀번호를 확인하세요")
-                .font(.system(size: 24, weight: .bold))
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.bottom, 8)
-            
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("비밀번호 확인")
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
-                    
-                    HStack {
-                        if showPassword {
-                            TextField("비밀번호를 다시 입력해주세요.", text: $confirmPassword)
-                        } else {
-                            SecureField("비밀번호를 다시 입력해주세요.", text: $confirmPassword)
-                        }
-                        
-                        Button(action: {
-                            showPassword.toggle()
-                        }) {
-                            Image(systemName: showPassword ? "eye.slash" : "eye")
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding()
-                    .background(Color(white: 0.96))
-                    .cornerRadius(10)
-                }
-                
-                DisabledTextField(label: "이메일", value: vm.email)
-                
-                TermsCheckbox(isChecked: $vm.agreeTerms)
-            }
-            
-            Spacer()
-                .frame(height: 50)
-            
-            Button(action: onNext) {
-                Text("다음")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(canProceed ? Color.black : Color(white: 0.85))
-                    .cornerRadius(10)
-            }
-            .disabled(!canProceed)
-            .animation(.easeInOut(duration: 0.2), value: canProceed)
-        }
     }
 }

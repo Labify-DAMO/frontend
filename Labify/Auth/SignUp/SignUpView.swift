@@ -42,8 +42,8 @@ struct SignUpView: View {
                         Spacer()
                     }
                     
-                    // 로고 (센터) - Step 6 이후에는 숨김
-                    if currentStep < 6 {
+                    // 로고 (센터) - Step 5 이후에는 숨김
+                    if currentStep < 5 {
                         Text("Labify")
                             .font(.system(size: 28, weight: .bold))
                             .foregroundStyle(
@@ -68,25 +68,63 @@ struct SignUpView: View {
                         Step1EmailInput(
                             vm: vm,
                             canProceed: canProceedStep1,
+                            onNext: { currentStep = 2 }
+                        )
+                    } else if currentStep == 2 {
+                        Step2PasswordInput(
+                            vm: vm,
+                            showPassword: $showPassword1,
+                            canProceed: canProceedStep2,
+                            onNext: { currentStep = 3 }
+                        )
+                    } else if currentStep == 3 {
+                        Step3PasswordConfirm(
+                            vm: vm,
+                            confirmPassword: $confirmPassword,
+                            showPassword: $showPassword2,
+                            canProceed: canProceedStep3,
+                            onNext: { currentStep = 4 }
+                        )
+                    } else if currentStep == 4 {
+                        Step4NameInput(
+                            vm: vm,
+                            canProceed: canProceedStep4,
+                            onNext: { currentStep = 5 }
+                        )
+                    } else if currentStep == 5 {
+                        Step5RoleSelection(
+                            selectedRole: $selectedRole,
+                            canProceed: canProceedStep5,
+                            onNext: { currentStep = 6 }
+                        )
+                    } else if currentStep == 6 {
+                        Step6AffiliationInput(
+                            vm: vm,
+                            selectedRole: selectedRole,
+                            canProceed: canProceedStep6,
                             onNext: {
                                 Task {
-                                    if await vm.sendVerificationCode() {
+                                    // 회원가입 API 호출 (인증 코드 자동 발송)
+                                    vm.role = selectedRole?.apiValue ?? ""
+                                    let success = await vm.signup()
+                                    if success {
                                         remainingTime = 300
                                         startTimer()
-                                        currentStep = 2
+                                        currentStep = 7
                                     }
                                 }
                             }
                         )
-                    } else if currentStep == 2 {
-                        Step2VerificationCode(
+                    } else if currentStep == 7 {
+                        Step7VerificationCode(
                             vm: vm,
                             verificationCode: $verificationCode,
                             isCodeFieldFocused: $isCodeFieldFocused,
                             remainingTime: $remainingTime,
-                            canProceed: canProceedStep2,
+                            canProceed: canProceedStep7,
                             onResend: {
                                 Task {
+                                    // 재전송만 send-code 사용
                                     await vm.sendVerificationCode()
                                     remainingTime = 300
                                     startTimer()
@@ -98,50 +136,8 @@ struct SignUpView: View {
                                         let success = await vm.verifyCode(code: code)
                                         if success {
                                             timer?.invalidate()
-                                            currentStep = 3
+                                            currentStep = 8
                                         }
-                                    }
-                                }
-                            }
-                        )
-                    } else if currentStep == 3 {
-                        Step3PasswordInput(
-                            vm: vm,
-                            showPassword: $showPassword1,
-                            canProceed: canProceedStep3,
-                            onNext: { currentStep = 4 }
-                        )
-                    } else if currentStep == 4 {
-                        Step4PasswordConfirm(
-                            vm: vm,
-                            confirmPassword: $confirmPassword,
-                            showPassword: $showPassword2,
-                            canProceed: canProceedStep4,
-                            onNext: { currentStep = 5 }
-                        )
-                    } else if currentStep == 5 {
-                        Step5NameInput(
-                            vm: vm,
-                            canProceed: canProceedStep5,
-                            onNext: { currentStep = 6 }
-                        )
-                    } else if currentStep == 6 {
-                        Step6RoleSelection(
-                            selectedRole: $selectedRole,
-                            canProceed: canProceedStep6,
-                            onNext: { currentStep = 7 }
-                        )
-                    } else if currentStep == 7 {
-                        Step7AffiliationInput(
-                            vm: vm,
-                            selectedRole: selectedRole,
-                            canProceed: canProceedStep7,
-                            onNext: {
-                                Task {
-                                    vm.role = selectedRole?.apiValue ?? ""
-                                    let success = await vm.signup()
-                                    if success {
-                                        currentStep = 8
                                     }
                                 }
                             }
@@ -168,27 +164,27 @@ struct SignUpView: View {
     }
     
     private var canProceedStep2: Bool {
-        verificationCode.count == 6
-    }
-    
-    private var canProceedStep3: Bool {
         !vm.password.isEmpty && vm.password.count >= 6 && vm.agreeTerms
     }
     
-    private var canProceedStep4: Bool {
+    private var canProceedStep3: Bool {
         !confirmPassword.isEmpty && confirmPassword == vm.password && vm.agreeTerms
     }
     
-    private var canProceedStep5: Bool {
+    private var canProceedStep4: Bool {
         !vm.name.isEmpty && vm.agreeTerms
     }
     
-    private var canProceedStep6: Bool {
+    private var canProceedStep5: Bool {
         selectedRole != nil
     }
     
-    private var canProceedStep7: Bool {
+    private var canProceedStep6: Bool {
         !vm.affiliation.isEmpty
+    }
+    
+    private var canProceedStep7: Bool {
+        verificationCode.count == 6
     }
     
     // MARK: - Timer Functions

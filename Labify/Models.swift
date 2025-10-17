@@ -393,6 +393,58 @@ struct FacilityJoinRequestItem: Identifiable, Codable {
     }
 }
 
+
+
+
+
+
+// Models.swift에 추가할 모델들
+
+import Foundation
+
+// MARK: - 연구소-수거업체 관계 관련
+
+struct CreateRelationRequest: Codable {
+    let labFacilityId: Int
+    let pickupFacilityId: Int
+}
+
+struct RelationResponse: Codable {
+    let relationshipId: Int
+    let labFacilityId: Int
+    let pickupFacilityId: Int
+}
+
+// MARK: - 시설 가입 요청 관련
+
+struct FacilityJoinConfirmResponse: Codable {
+    let relationId: Int
+    let userId: Int
+    let facilityId: Int
+}
+
+struct FacilityJoinRejectResponse: Codable {
+    let requestId: Int
+    let status: String
+}
+
+// MARK: - 시설 등록 응답
+
+struct FacilityRegistrationResponse: Codable {
+    let facilityId: Int
+    let name: String
+    let type: String
+    let address: String
+    let facilityCode: String
+}
+
+
+
+
+
+
+
+
 // 연구소-수거업체 관계
 struct FacilityRelation: Identifiable, Codable {
     let id: Int
