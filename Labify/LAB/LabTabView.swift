@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct LabTabView: View {
+    let userInfo: UserInfo
+    @ObservedObject var authVM: AuthViewModel
+    
     var body: some View {
         TabView {
             LabDashboardView()
@@ -38,5 +41,14 @@ struct LabTabView: View {
 }
 
 #Preview {
-    LabTabView()
+    LabTabView(
+        userInfo: UserInfo(
+            userId: 2,
+            name: "김실험",
+            email: "facility@test.com",
+            role: "LAB_MANAGER",
+            affiliation: "종합관리센터"
+        ),
+        authVM: AuthViewModel()
+    )
 }

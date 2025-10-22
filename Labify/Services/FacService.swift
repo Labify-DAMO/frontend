@@ -174,6 +174,27 @@ import Foundation
 enum FacService {
     static let networkManager = NetworkManager.shared
     
+    // MARK: - 시설 관련 API
+    
+    static func registerFacility(request: RegisterFacilityRequest, token: String) async throws -> Facility {
+        let response: Facility = try await networkManager.request(
+            endpoint: "/facilities/register",
+            method: "POST",
+            body: request,
+            token: token
+        )
+        return response
+    }
+    
+    static func fetchFacilities(token: String) async throws -> [Facility] {
+        let response: [Facility] = try await networkManager.request(
+            endpoint: "/facilities",
+            method: "GET",
+            token: token
+        )
+        return response
+    }
+    
     // MARK: - 실험실 관련 API
     
     static func fetchLabs(token: String) async throws -> [Lab] {
@@ -232,37 +253,17 @@ enum FacService {
         return response
     }
     
-    // MARK: - 시설 관련 API
     
-    static func registerFacility(request: RegisterFacilityRequest, token: String) async throws -> Facility {
-        let response: Facility = try await networkManager.request(
-            endpoint: "/facilities/register",
-            method: "POST",
-            body: request,
-            token: token
-        )
-        return response
-    }
-    
-    static func fetchFacilities(token: String) async throws -> [Facility] {
-        let response: [Facility] = try await networkManager.request(
-            endpoint: "/facilities",
+    // MARK: - 시설 가입 요청 관련 API
+
+    static func fetchFacilityJoinRequests(token: String) async throws -> [FacilityJoinRequestItem] {
+        let response: [FacilityJoinRequestItem] = try await networkManager.request(
+            endpoint: "/facilities/requests",
             method: "GET",
             token: token
         )
         return response
     }
-    
-    // MARK: - 시설 가입 요청 관련 API
-//    
-//    static func fetchFacilityJoinRequests(token: String) async throws -> [FacilityJoinRequestItem] {
-//        let response: [FacilityJoinRequestItem] = try await networkManager.request(
-//            endpoint: "/facilities/requests",
-//            method: "GET",
-//            token: token
-//        )
-//        return response
-//    }
     
     // FacilityService.swift에 추가
     static func requestFacilityJoin(

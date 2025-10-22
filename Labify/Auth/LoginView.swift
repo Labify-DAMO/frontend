@@ -175,19 +175,20 @@ struct LoginView: View {
                 // role에 따라 화면 분기
                 switch vm.userInfo?.role {
                 case "LAB_MANAGER":
-                    LabTabView()
+                    LabTabView(userInfo: vm.userInfo!, authVM: vm)
                 case "PICKUP_MANAGER":
                     //PickupManagerView()
-                    PickTabView()
+                    PickTabView(userInfo: vm.userInfo!, authVM: vm)
                 case "FACILITY_MANAGER":
-                    FacTabView(userInfo: UserInfo(
-                        userId: 3,
-                        name: "이시설",
-                        email: "facility@test.com",
-                        role: "FACILITY_MANAGER",
-                        affiliation: "종합관리센터"
-                    ),
-                    authVM: AuthViewModel())
+                    FacTabView(userInfo: vm.userInfo!, authVM: vm)
+//                    FacTabView(userInfo: UserInfo(
+//                        userId: 3,
+//                        name: "이시설",
+//                        email: "facility@test.com",
+//                        role: "FACILITY_MANAGER",
+//                        affiliation: "종합관리센터"
+//                    ),
+//                    authVM: AuthViewModel())
                 default:
                     Text("알 수 없는 역할")
                 }

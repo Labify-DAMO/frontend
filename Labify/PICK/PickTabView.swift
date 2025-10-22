@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct PickTabView: View {
+    let userInfo: UserInfo
+    @ObservedObject var authVM: AuthViewModel
     @State private var selectedTab = 0
     
     var body: some View {
@@ -45,5 +47,14 @@ struct PickTabView: View {
 }
 
 #Preview {
-    PickTabView()
+    PickTabView(
+        userInfo: UserInfo(
+        userId: 2,
+        name: "김수거",
+        email: "pickup_user@test.com",
+        role: "PICKUP_MANAGER",
+        affiliation: "햄햄수거업체"
+    ),
+    authVM: AuthViewModel()
+    )
 }

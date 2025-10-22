@@ -339,21 +339,46 @@ struct PickupHistoryItem: Identifiable, Codable {
 
 // MARK: - ========== FACILITY MODELS ==========
 
+//struct Facility: Identifiable, Codable {
+//    let id: Int
+//    let name: String
+//    let type: String
+//    let address: String
+//    let facilityCode: String
+//    
+//    enum CodingKeys: String, CodingKey {
+//        case id = "facilityId"
+//        case name
+//        case type
+//        case address
+//        case facilityCode
+//    }
+//}
+
+//// Models.swift (필요 시)
+//struct RegisterFacilityRequest: Codable {
+//    let name: String
+//    let type: String   // "LAB" 등
+//    let address: String
+//    let managerId: Int
+//}
+
 struct Facility: Identifiable, Codable {
-    let id: Int
+    let id: Int        // CodingKeys에서 facilityId 매핑
     let name: String
     let type: String
     let address: String
     let facilityCode: String
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "facilityId"
-        case name
-        case type
-        case address
-        case facilityCode
+        case name, type, address, facilityCode
     }
 }
+
+
+
+
 
 // 시설 가입 요청
 struct FacilityJoinRequest: Codable {
