@@ -254,14 +254,32 @@ enum FacService {
     }
     
     // MARK: - 시설 가입 요청 관련 API
+//    
+//    static func fetchFacilityJoinRequests(token: String) async throws -> [FacilityJoinRequestItem] {
+//        let response: [FacilityJoinRequestItem] = try await networkManager.request(
+//            endpoint: "/facilities/requests",
+//            method: "GET",
+//            token: token
+//        )
+//        return response
+//    }
     
-    static func fetchFacilityJoinRequests(token: String) async throws -> [FacilityJoinRequestItem] {
-        let response: [FacilityJoinRequestItem] = try await networkManager.request(
+    // FacilityService.swift에 추가
+    static func requestFacilityJoin(
+        userId: Int,
+        facilityCode: String,
+        token: String
+    ) async throws -> FacilityJoinRequestResponse {
+        let request = FacilityJoinRequest(
+            userId: userId,
+            facilityCode: facilityCode
+        )
+        return try await networkManager.request(
             endpoint: "/facilities/requests",
-            method: "GET",
+            method: "POST",
+            body: request,
             token: token
         )
-        return response
     }
     
     static func confirmFacilityJoinRequest(requestId: Int, token: String) async throws -> FacilityJoinConfirmResponse {

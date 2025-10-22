@@ -91,7 +91,7 @@ struct FacManagementView: View {
             .task {
                 await viewModel.fetchLabs()
                 await viewModel.fetchLabRequests()
-                await viewModel.fetchFacilityJoinRequests()
+               // await viewModel.fetchFacilityJoinRequests()
                 await viewModel.fetchFacilityRelations()
                 await viewModel.fetchPickupFacilities()
             }

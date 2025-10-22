@@ -21,16 +21,25 @@ class WasteViewModel: ObservableObject {
     @Published var isClassifying = false
     
     private var token: String? {
-        UserDefaults.standard.string(forKey: "accessToken")
+        let token = UserDefaults.standard.string(forKey: "accessToken")
+        print("🔑 Token check: \(token != nil ? "존재함" : "없음")")
+        if let t = token {
+            print("🔑 Token value: \(t.prefix(20))...")
+        }
+        return token
     }
     
     // MARK: - ✅ AI 폐기물 분류 (LAB)
     func classifyWasteWithAI(imageData: Data) async -> AIClassifyResponse? {
+        print("📸 AI 분류 시작...")
+        
         guard let token = token else {
+            print("❌ 토큰이 없습니다!")
             handleError(NetworkError.unauthorized)
             return nil
         }
         
+        print("✅ 토큰 확인 완료, API 호출 시작")
         isClassifying = true
         defer { isClassifying = false }
         
@@ -40,8 +49,10 @@ class WasteViewModel: ObservableObject {
                 token: token
             )
             aiClassifyResult = result
+            print("✅ AI 분류 성공: \(result.coarse) - \(result.fine)")
             return result
         } catch {
+            print("❌ AI 분류 실패: \(error)")
             handleError(error)
             return nil
         }
@@ -96,12 +107,6 @@ class WasteViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         
-        // do {
-        //     wastes = try await WasteService.fetchWastes(labId: labId, token: token)
-        // } catch {
-        //     handleError(error)
-        // }
-        
         // 임시 목 데이터
         wastes = []
     }
@@ -116,15 +121,6 @@ class WasteViewModel: ObservableObject {
         
         isLoading = true
         defer { isLoading = false }
-        
-        // do {
-        //     try await WasteService.deleteWaste(wasteId: wasteId, token: token)
-        //     wastes.removeAll { $0.id == wasteId }
-        //     return true
-        // } catch {
-        //     handleError(error)
-        //     return false
-        // }
         
         return false
     }
@@ -154,8 +150,12 @@ struct WasteService {
     static func classifyWaste(imageData: Data, token: String) async throws -> AIClassifyResponse {
         // Multipart/form-data 요청 생성
         guard let url = URL(string: networkManager.baseURLString + "/ai-predict") else {
+            print("❌ Invalid URL: \(networkManager.baseURLString)/ai-predict")
             throw NetworkError.invalidURL
         }
+        
+        print("📡 Request URL: \(url)")
+        print("📦 Image size: \(imageData.count) bytes")
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -176,17 +176,29 @@ struct WasteService {
         
         request.httpBody = body
         
+        print("📤 Sending request...")
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ Invalid response type")
             throw NetworkError.invalidResponse
         }
         
+        print("📥 Response status: \(httpResponse.statusCode)")
+        
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📄 Response body: \(responseString)")
+        }
+        
         guard (200...299).contains(httpResponse.statusCode) else {
+            print("❌ HTTP Error: \(httpResponse.statusCode)")
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
         
-        return try JSONDecoder().decode(AIClassifyResponse.self, from: data)
+        let decoder = JSONDecoder()
+        let result = try decoder.decode(AIClassifyResponse.self, from: data)
+        print("✅ Decoded successfully")
+        return result
     }
     
     // MARK: - ✅ 폐기물 등록
@@ -198,101 +210,4 @@ struct WasteService {
             token: token
         )
     }
-    
-    // MARK: - 폐기물 목록 조회 (TODO)
-    // static func fetchWastes(labId: Int?, token: String) async throws -> [Waste] {
-    //     let endpoint = labId != nil ? "/wastes?labId=\(labId!)" : "/wastes"
-    //     return try await networkManager.request(
-    //         endpoint: endpoint,
-    //         method: "GET",
-    //         token: token
-    //     )
-    // }
-    
-    // MARK: - 폐기물 삭제 (TODO)
-    // static func deleteWaste(wasteId: Int, token: String) async throws {
-    //     let _: EmptyResponse = try await networkManager.request(
-    //         endpoint: "/wastes/\(wasteId)",
-    //         method: "DELETE",
-    //         token: token
-    //     )
-    // }
 }
-
-// MARK: - Models
-//
-//// ✅ AI 분류 응답
-//struct AIClassifyResponse: Codable {
-//    let coarse: String      // 대분류: sharps, chemicals, etc.
-//    let fine: String        // 세분류: syringe, needle, etc.
-//    let is_bio: Bool        // 생물학적 폐기물 여부
-//    let is_ocr: Bool        // OCR 감지 여부
-//    let ocr_text: String?   // OCR 텍스트
-//    
-//    var displayCoarse: String {
-//        switch coarse {
-//        case "sharps": return "날카로운 물체"
-//        case "chemicals": return "화학 물질"
-//        case "biological": return "생물학적 폐기물"
-//        default: return coarse
-//        }
-//    }
-//    
-//    var displayFine: String {
-//        switch fine {
-//        case "syringe": return "주사기"
-//        case "needle": return "주사바늘"
-//        case "gloves": return "장갑"
-//        default: return fine
-//        }
-//    }
-//}
-//
-//// ✅ 폐기물 등록 요청
-//struct RegisterWasteRequest: Codable {
-//    let lab_id: Int
-//    let waste_type_id: Int
-//    let weight: Double
-//    let unit: String
-//    let memo: String?
-//    let created_by: Int
-//}
-//
-//// ✅ 폐기물 등록 응답
-//struct DisposalResponse: Codable {
-//    let disposal_id: Int
-//    let qr_code_url: String
-//    let status: String      // "stored", "requested", "completed"
-//    
-//    enum CodingKeys: String, CodingKey {
-//        case disposal_id
-//        case qr_code_url
-//        case status
-//    }
-//}
-//
-//// 기존 Waste 모델 (목록 조회용 - API 개발 대기)
-//struct Waste: Identifiable, Codable {
-//    let id: Int
-//    let name: String
-//    let weight: Double
-//    let unit: String
-//    let labId: Int
-//    let status: String
-//    
-//    enum CodingKeys: String, CodingKey {
-//        case id = "wasteId"
-//        case name
-//        case weight
-//        case unit
-//        case labId
-//        case status
-//    }
-//}
-//
-//// NetworkManager에 baseURL 노출 필요
-//extension NetworkManager {
-//    var baseURL: String {
-//        return "http://localhost:8080"
-//    }
-//}

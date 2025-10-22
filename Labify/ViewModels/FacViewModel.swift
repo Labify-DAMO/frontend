@@ -200,20 +200,45 @@ class FacViewModel: ObservableObject {
     }
     
     // MARK: - 시설 가입 요청 목록 조회
-    func fetchFacilityJoinRequests() async {
+//    func fetchFacilityJoinRequests() async {
+//        isLoading = true
+//        errorMessage = nil
+//        
+//        do {
+//            facilityJoinRequests = try await FacService.fetchFacilityJoinRequests(token: token)
+//        } catch {
+//            errorMessage = error.localizedDescription
+//            showError = true
+//            print("❌ Failed to fetch facility join requests: \(error)")
+//        }
+//        
+//        isLoading = false
+//    }
+
+    // MARK: - 시설 가입 요청
+    func requestFacilityJoin(userId: Int, facilityCode: String) async -> Bool {
         isLoading = true
         errorMessage = nil
         
         do {
-            facilityJoinRequests = try await FacService.fetchFacilityJoinRequests(token: token)
+            let response = try await FacService.requestFacilityJoin(
+                userId: userId,
+                facilityCode: facilityCode,
+                token: token
+            )
+            print("✅ 시설 가입 요청 성공: requestId=\(response.requestId), status=\(response.status)")
+            isLoading = false
+            return true
         } catch {
             errorMessage = error.localizedDescription
             showError = true
-            print("❌ Failed to fetch facility join requests: \(error)")
+            print("❌ Failed to request facility join: \(error)")
+            isLoading = false
+            return false
         }
-        
-        isLoading = false
     }
+    
+    
     
     // MARK: - 시설 가입 요청 수락
     func confirmFacilityJoinRequest(requestId: Int) async -> Bool {
