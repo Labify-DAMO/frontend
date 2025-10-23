@@ -7,18 +7,21 @@
 
 import SwiftUI
 
-// MARK: - 관리 화면
 struct FacManagementView: View {
     let userInfo: UserInfo
     @StateObject private var viewModel = FacViewModel()
+    
     @State private var selectedTab = 0
     @State private var searchText = ""
-    @State private var showRegisterSheet = false
+    
+    // 시트 상태
+    @State private var showRegisterSheet = false       // ✅ 시설 등록 시트
+    @State private var showRegisterLabSheet = false    // ✅ 실험실 등록 시트
     @State private var showInviteSheet = false
-    @State private var showEditSheet = false
     @State private var showRelationSheet = false
     @State private var selectedLab: Lab?
-    @State private var requestTab = 0 // 0: 실험실 개설 요청, 1: 시설 가입 요청
+    
+    @State private var requestTab = 0 // 권한 탭 내부용
     
     var filteredLabs: [Lab] {
         viewModel.filteredLabs(searchText: searchText)
@@ -27,27 +30,24 @@ struct FacManagementView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // 상단 탭
-                HStack(spacing: 0) {
-                    FacilityTabButton(title: "시설", isSelected: selectedTab == 0) {
-                        selectedTab = 0
-                    }
-                    FacilityTabButton(title: "수거업체", isSelected: selectedTab == 1) {
-                        selectedTab = 1
-                    }
-                    FacilityTabButton(title: "권한", isSelected: selectedTab == 2) {
-                        selectedTab = 2
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
                 
-                if selectedTab == 0 {
-                    facilityTabContent
-                } else if selectedTab == 1 {
-                    pickupRelationTabContent
+                // ✅ 시설이 없으면: 등록 유도 화면
+                if !viewModel.hasFacility {
+                    noFacilityEmptyState
                 } else {
-                    permissionTabContent
+                    // ✅ 상단 탭
+                    HStack(spacing: 0) {
+                        FacilityTabButton(title: "시설", isSelected: selectedTab == 0) { selectedTab = 0 }
+                        FacilityTabButton(title: "수거업체", isSelected: selectedTab == 1) { selectedTab = 1 }
+                        FacilityTabButton(title: "권한", isSelected: selectedTab == 2) { selectedTab = 2 }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    
+                    // ✅ 탭 콘텐츠
+                    if selectedTab == 0 { facilityTabContent }
+                    else if selectedTab == 1 { pickupRelationTabContent }
+                    else { permissionTabContent }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -57,12 +57,24 @@ struct FacManagementView: View {
                         .font(.system(size: 17, weight: .semibold))
                 }
             }
+            // ✅ 시트 등록
             .sheet(isPresented: $showRegisterSheet) {
-                RegisterLabSheet(
+                FacilityRegisterSheet(
                     isPresented: $showRegisterSheet,
                     viewModel: viewModel,
-                    facilityId: 1 // TODO: userInfo에서 facilityId 가져오기
+                    userInfo: userInfo
                 )
+            }
+            .sheet(isPresented: $showRegisterLabSheet) {
+                if let fid = viewModel.facilityId {
+                    RegisterLabSheet(
+                        isPresented: $showRegisterLabSheet,
+                        viewModel: viewModel,
+                        facilityId: fid
+                    )
+                } else {
+                    ProgressView("시설 정보 불러오는 중...")
+                }
             }
             .sheet(isPresented: $showInviteSheet) {
                 InviteManagerSheet(isPresented: $showInviteSheet)
@@ -88,23 +100,68 @@ struct FacManagementView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
             }
+            // ✅ 초기 데이터 로드
             .task {
-                await viewModel.fetchLabs()
-                await viewModel.fetchLabRequests()
-               // await viewModel.fetchFacilityJoinRequests()
-                await viewModel.fetchFacilityRelations()
-                await viewModel.fetchPickupFacilities()
+                await viewModel.fetchFacilityInfo()
+                if viewModel.hasFacility {
+                    await viewModel.fetchLabs()
+                    await viewModel.fetchLabRequests()
+                    await viewModel.fetchFacilityJoinRequests()
+                    await viewModel.fetchFacilityRelations()
+                    await viewModel.fetchPickupFacilities()
+                }
             }
         }
     }
-    
-    // MARK: - 시설 탭 콘텐츠
-    private var facilityTabContent: some View {
+}
+
+// MARK: - 시설 없음 안내 뷰
+private extension FacManagementView {
+    // ✅ viewModel을 파라미터로 받지 않고 computed property로
+    var noFacilityEmptyState: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "building.2.crop.circle.badge.exclamationmark")
+                .font(.system(size: 60))
+                .foregroundColor(.gray.opacity(0.7))
+            
+            Text("등록된 시설이 없습니다")
+                .font(.title3.weight(.semibold))
+            Text("시설을 먼저 등록한 후 연구실/수거업체/권한 관리를 진행하세요.")
+                .font(.subheadline)
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+            
+            Button {
+                if viewModel.hasFacility {  // ✅ 이제 접근 가능
+                    viewModel.errorMessage = "이미 등록된 시설이 있습니다."
+                    viewModel.showError = true
+                } else {
+                    showRegisterSheet = true
+                }
+            } label: {
+                Text("시설 등록하기")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.blue)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 24)
+            }
+            Spacer()
+        }
+    }
+}
+
+// MARK: - 시설 탭
+private extension FacManagementView {
+    var facilityTabContent: some View {
         VStack(spacing: 0) {
-            // 필터 버튼
             HStack(spacing: 12) {
                 FilterButton(title: "새 실험실 등록", isSelected: false) {
-                    showRegisterSheet = true
+                    showRegisterLabSheet = true
                 }
                 FilterButton(title: "담당자 초대", isSelected: false, isOutlined: true) {
                     showInviteSheet = true
@@ -113,16 +170,14 @@ struct FacManagementView: View {
             .padding(.horizontal)
             .padding(.top, 20)
             
-            // 통계 카드
             HStack(spacing: 12) {
-                StatCard(title: "실험실", value: "\(viewModel.labs.count)")
+                StatCard(title: "실험실 수", value: "\(viewModel.labs.count)")
                 StatCard(title: "담당자", value: "34")
                 StatCard(title: "이번 달 비용", value: "1.2 M", unit: "(₩)")
             }
             .padding(.horizontal)
             .padding(.top, 20)
             
-            // 검색바
             HStack {
                 TextField("실험실/부서 검색", text: $searchText)
                     .padding(.leading, 12)
@@ -136,7 +191,6 @@ struct FacManagementView: View {
             .padding(.horizontal)
             .padding(.top, 16)
             
-            // 실험실 리스트
             if viewModel.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -160,9 +214,7 @@ struct FacManagementView: View {
                                 managerCount: 0,
                                 isActive: true
                             )
-                            .onTapGesture {
-                                selectedLab = lab
-                            }
+                            .onTapGesture { selectedLab = lab }
                         }
                     }
                     .padding(.horizontal)
@@ -172,11 +224,12 @@ struct FacManagementView: View {
             }
         }
     }
-    
-    // MARK: - 수거업체 관계 탭 콘텐츠
-    private var pickupRelationTabContent: some View {
+}
+
+// MARK: - 수거업체 탭
+private extension FacManagementView {
+    var pickupRelationTabContent: some View {
         VStack(spacing: 0) {
-            // 추가 버튼
             HStack {
                 Spacer()
                 Button(action: { showRelationSheet = true }) {
@@ -202,11 +255,9 @@ struct FacManagementView: View {
             .padding(.horizontal)
             .padding(.top, 20)
             
-            // 관계 목록
             if viewModel.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.top, 40)
             } else if viewModel.facilityRelations.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "truck.box")
@@ -217,7 +268,6 @@ struct FacManagementView: View {
                         .foregroundColor(.gray)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.top, 40)
             } else {
                 ScrollView {
                     VStack(spacing: 12) {
@@ -226,9 +276,7 @@ struct FacManagementView: View {
                                 relation: relation,
                                 onDelete: {
                                     Task {
-                                        await viewModel.deleteFacilityRelation(
-                                            relationshipId: relation.id
-                                        )
+                                        await viewModel.deleteFacilityRelation(relationshipId: relation.id)
                                     }
                                 }
                             )
@@ -241,11 +289,12 @@ struct FacManagementView: View {
             }
         }
     }
-    
-    // MARK: - 권한 탭 콘텐츠
-    private var permissionTabContent: some View {
+}
+
+// MARK: - 권한 탭
+private extension FacManagementView {
+    var permissionTabContent: some View {
         VStack(spacing: 0) {
-            // 요청 타입 선택 탭
             HStack(spacing: 0) {
                 Button(action: { requestTab = 0 }) {
                     VStack(spacing: 8) {
@@ -256,8 +305,7 @@ struct FacManagementView: View {
                             .fill(requestTab == 0 ? Color.primary : Color.clear)
                             .frame(height: 2)
                     }
-                }
-                .frame(maxWidth: .infinity)
+                }.frame(maxWidth: .infinity)
                 
                 Button(action: { requestTab = 1 }) {
                     VStack(spacing: 8) {
@@ -268,8 +316,7 @@ struct FacManagementView: View {
                             .fill(requestTab == 1 ? Color.primary : Color.clear)
                             .frame(height: 2)
                     }
-                }
-                .frame(maxWidth: .infinity)
+                }.frame(maxWidth: .infinity)
             }
             .padding(.horizontal)
             .padding(.top, 12)
@@ -282,337 +329,70 @@ struct FacManagementView: View {
         }
     }
     
-    // MARK: - 실험실 개설 요청 목록
-    private var labRequestListContent: some View {
+    var labRequestListContent: some View {
         Group {
             if viewModel.isLoading {
                 ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.top, 40)
             } else if viewModel.labRequests.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "doc.text.magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundColor(.gray.opacity(0.5))
-                    Text("대기 중인 실험실 개설 요청이 없습니다")
-                        .font(.system(size: 16))
-                        .foregroundColor(.gray)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.top, 40)
+                EmptyStateView(icon: "doc.text.magnifyingglass", text: "대기 중인 실험실 개설 요청이 없습니다")
             } else {
                 ScrollView {
                     VStack(spacing: 12) {
-                        ForEach(viewModel.labRequests) { request in
+                        ForEach(viewModel.labRequests) { req in
                             LabRequestCard(
-                                request: request,
-                                onConfirm: {
-                                    Task {
-                                        await viewModel.confirmLabRequest(requestId: request.id)
-                                    }
-                                },
-                                onReject: {
-                                    Task {
-                                        await viewModel.rejectLabRequest(requestId: request.id)
-                                    }
-                                }
+                                request: req,
+                                onConfirm: { Task { await viewModel.confirmLabRequest(requestId: req.id) } },
+                                onReject: { Task { await viewModel.rejectLabRequest(requestId: req.id) } }
                             )
                         }
                     }
                     .padding(.horizontal)
                     .padding(.top, 20)
-                    .padding(.bottom, 100)
                 }
             }
         }
     }
     
-    // MARK: - 시설 가입 요청 목록
-    private var facilityJoinRequestListContent: some View {
+    var facilityJoinRequestListContent: some View {
         Group {
             if viewModel.isLoading {
                 ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.top, 40)
             } else if viewModel.facilityJoinRequests.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "person.badge.plus")
-                        .font(.system(size: 48))
-                        .foregroundColor(.gray.opacity(0.5))
-                    Text("대기 중인 시설 가입 요청이 없습니다")
-                        .font(.system(size: 16))
-                        .foregroundColor(.gray)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.top, 40)
+                EmptyStateView(icon: "person.badge.plus", text: "대기 중인 시설 가입 요청이 없습니다")
             } else {
                 ScrollView {
                     VStack(spacing: 12) {
-                        ForEach(viewModel.facilityJoinRequests) { request in
+                        ForEach(viewModel.facilityJoinRequests) { req in
                             FacilityJoinRequestCard(
-                                request: request,
-                                onConfirm: {
-                                    Task {
-                                        await viewModel.confirmFacilityJoinRequest(
-                                            requestId: request.id
-                                        )
-                                    }
-                                },
-                                onReject: {
-                                    Task {
-                                        await viewModel.rejectFacilityJoinRequest(
-                                            requestId: request.id
-                                        )
-                                    }
-                                }
+                                request: req,
+                                onConfirm: { Task { await viewModel.confirmFacilityJoinRequest(requestId: req.id) } },
+                                onReject: { Task { await viewModel.rejectFacilityJoinRequest(requestId: req.id) } }
                             )
                         }
                     }
                     .padding(.horizontal)
                     .padding(.top, 20)
-                    .padding(.bottom, 100)
                 }
             }
         }
     }
 }
 
-// MARK: - 수거업체 연결 시트
-struct AddPickupRelationSheet: View {
-    @Binding var isPresented: Bool
-    @ObservedObject var viewModel: FacViewModel
-    
-    @State private var selectedPickupFacilityId: Int?
-    
+// MARK: - 공용 빈 상태 뷰
+private struct EmptyStateView: View {
+    let icon: String
+    let text: String
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("수거업체 선택")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.gray)
-                    
-                    if viewModel.pickupFacilities.isEmpty {
-                        Text("사용 가능한 수거업체가 없습니다")
-                            .font(.system(size: 15))
-                            .foregroundColor(.gray)
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(Color(white: 0.96))
-                            .cornerRadius(12)
-                    } else {
-                        Menu {
-                            ForEach(viewModel.pickupFacilities) { facility in
-                                Button(facility.name) {
-                                    selectedPickupFacilityId = facility.id
-                                }
-                            }
-                        } label: {
-                            HStack {
-                                if let selectedId = selectedPickupFacilityId,
-                                   let facility = viewModel.pickupFacilities.first(where: { $0.id == selectedId }) {
-                                    Text(facility.name)
-                                        .foregroundColor(.primary)
-                                } else {
-                                    Text("수거업체를 선택하세요")
-                                        .foregroundColor(.gray)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.up.chevron.down")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.gray)
-                            }
-                            .padding()
-                            .background(Color(white: 0.96))
-                            .cornerRadius(12)
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                HStack(spacing: 12) {
-                    Button("취소") {
-                        isPresented = false
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color(white: 0.95))
-                    .foregroundColor(.primary)
-                    .cornerRadius(12)
-                    
-                    Button("연결하기") {
-                        Task {
-                            guard let pickupId = selectedPickupFacilityId else { return }
-                            let success = await viewModel.createFacilityRelation(
-                                labFacilityId: 1, // TODO: 실제 시설 ID
-                                pickupFacilityId: pickupId
-                            )
-                            if success {
-                                isPresented = false
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(
-                        LinearGradient(
-                            colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                                     Color(red: 113/255, green: 100/255, blue: 230/255)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                    .disabled(selectedPickupFacilityId == nil || viewModel.isLoading)
-                    .opacity(selectedPickupFacilityId == nil ? 0.5 : 1)
-                }
-            }
-            .padding()
-            .navigationTitle("수거업체 연결")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("닫기") {
-                        isPresented = false
-                    }
-                }
-            }
+        VStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 48))
+                .foregroundColor(.gray.opacity(0.5))
+            Text(text)
+                .font(.system(size: 16))
+                .foregroundColor(.gray)
         }
-    }
-}
-
-// MARK: - 수거업체 관계 카드
-struct PickupRelationCard: View {
-    let relation: FacilityRelation
-    let onDelete: () -> Void
-    
-    @State private var showDeleteAlert = false
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(relation.pickupCompanyName)
-                    .font(.system(size: 16, weight: .semibold))
-                Text("연결일: \(formatDate(relation.createdAt))")
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
-            }
-            
-            Spacer()
-            
-            Button(action: { showDeleteAlert = true }) {
-                Image(systemName: "trash")
-                    .font(.system(size: 16))
-                    .foregroundColor(.red)
-                    .padding(8)
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(8)
-            }
-        }
-        .padding(16)
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
-        .alert("연결 해제", isPresented: $showDeleteAlert) {
-            Button("취소", role: .cancel) { }
-            Button("해제", role: .destructive) {
-                onDelete()
-            }
-        } message: {
-            Text("이 수거업체와의 연결을 해제하시겠습니까?")
-        }
-    }
-    
-    private func formatDate(_ dateString: String) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        if let date = formatter.date(from: dateString) {
-            formatter.dateFormat = "yyyy.MM.dd"
-            return formatter.string(from: date)
-        }
-        return dateString
-    }
-}
-
-// MARK: - 시설 가입 요청 카드
-struct FacilityJoinRequestCard: View {
-    let request: FacilityJoinRequestItem
-    let onConfirm: () -> Void
-    let onReject: () -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(request.userName)
-                        .font(.system(size: 16, weight: .semibold))
-                    Text(request.userEmail)
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
-                }
-                Spacer()
-                Text(formatDate(request.requestedAt))
-                    .font(.system(size: 12))
-                    .foregroundColor(.gray)
-            }
-            
-            Divider()
-            
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("시설 코드")
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
-                    Text(request.facilityCode)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.blue)
-                }
-                Spacer()
-            }
-            
-            HStack(spacing: 8) {
-                Button("거절") {
-                    onReject()
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color(white: 0.95))
-                .foregroundColor(.red)
-                .cornerRadius(8)
-                
-                Button("승인") {
-                    onConfirm()
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                    LinearGradient(
-                        colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                                 Color(red: 113/255, green: 100/255, blue: 230/255)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .foregroundColor(.white)
-                .cornerRadius(8)
-            }
-        }
-        .padding(16)
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
-    }
-    
-    private func formatDate(_ dateString: String) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        if let date = formatter.date(from: dateString) {
-            formatter.dateFormat = "MM/dd HH:mm"
-            return formatter.string(from: date)
-        }
-        return dateString
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.top, 40)
     }
 }
 

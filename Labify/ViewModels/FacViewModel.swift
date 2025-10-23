@@ -52,26 +52,43 @@ final class FacViewModel: ObservableObject {
                 showError = true
             }
         }
-
-        /// 시설 등록
-        func registerFacility(name: String, type: String, address: String, managerId: Int) async -> Bool {
-            guard let token = readToken() else { return false }
-            isLoading = true
-            defer { isLoading = false }
-
-            do {
-                let req = RegisterFacilityRequest(name: name, type: type, address: address, managerId: managerId)
-                let created = try await FacService.registerFacility(request: req, token: token)
-                // 응답 예: { facilityId, name, type, address, facilityCode }
-                self.facilityInfo = created
-                self.facilityId = created.id
-                return true
-            } catch {
-                self.errorMessage = error.localizedDescription
-                self.showError = true
-                return false
-            }
+    
+    /// 시설 등록 (중복 방지 추가)
+    func registerFacility(name: String, type: String, address: String, managerId: Int) async -> Bool {
+        guard let token = readToken() else { return false }
+        
+        // ✅ 이미 시설이 있으면 등록 불가
+        if hasFacility {
+            errorMessage = "이미 등록된 시설이 있습니다. 한 사용자는 하나의 시설에만 소속될 수 있습니다."
+            showError = true
+            return false
         }
+        
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let req = RegisterFacilityRequest(
+                name: name,
+                type: type,
+                address: address,
+                managerId: managerId
+            )
+            let created = try await FacService.registerFacility(request: req, token: token)
+            
+            // ✅ 등록 성공 후 즉시 상태 업데이트
+            self.facilityInfo = created
+            self.facilityId = created.id
+            
+            print("✅ 시설 등록 성공: \(created.name) (ID: \(created.id))")
+            return true
+        } catch {
+            self.errorMessage = error.localizedDescription
+            self.showError = true
+            print("❌ 시설 등록 실패: \(error)")
+            return false
+        }
+    }
 
 
     
@@ -256,6 +273,13 @@ final class FacViewModel: ObservableObject {
 
     // MARK: - 시설 가입 요청
     func requestFacilityJoin(userId: Int, facilityCode: String) async -> Bool {
+        // ✅ 이미 시설이 있으면 요청 불가
+        if hasFacility {
+            errorMessage = "이미 소속된 시설이 있습니다. 한 사용자는 하나의 시설에만 소속될 수 있습니다."
+            showError = true
+            return false
+        }
+        
         isLoading = true
         errorMessage = nil
         

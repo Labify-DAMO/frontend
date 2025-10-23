@@ -138,6 +138,13 @@ struct InitialFacilityRequestView: View {
             return
         }
         
+        // ✅ 이미 시설이 있으면 요청 불가
+        if viewModel.hasFacility {
+            viewModel.errorMessage = "이미 소속된 시설이 있습니다."
+            viewModel.showError = true
+            return
+        }
+        
         isSubmitting = true
         
         let success = await viewModel.requestFacilityJoin(
