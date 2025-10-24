@@ -8,12 +8,42 @@
 import SwiftUI
 
 struct InitialFacilityRequestView: View {
+    let userInfo: UserInfo
     @StateObject private var viewModel = FacViewModel()
     @State private var facilityCode = ""
     @State private var isSubmitting = false
     @State private var showSuccessAlert = false
+    @State private var requestSubmitted = false
     
     var body: some View {
+        VStack(spacing: 0) {
+            if requestSubmitted {
+                // ✅ 요청 제출 후 대기 화면
+                waitingView
+            } else {
+                // 요청 입력 화면
+                requestInputView
+            }
+        }
+        .background(Color.white)
+        .alert("요청 완료", isPresented: $showSuccessAlert) {
+            Button("확인", role: .cancel) {
+                requestSubmitted = true
+            }
+        } message: {
+            Text("시설 관리자의 승인을 기다려주세요.\n승인 후 서비스를 이용하실 수 있습니다.")
+        }
+        .alert("오류", isPresented: $viewModel.showError) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            if let errorMessage = viewModel.errorMessage {
+                Text(errorMessage)
+            }
+        }
+    }
+    
+    // MARK: - 요청 입력 화면
+    private var requestInputView: some View {
         VStack(spacing: 0) {
             // 헤더 영역
             VStack(spacing: 16) {
@@ -114,21 +144,77 @@ struct InitialFacilityRequestView: View {
             .padding(.horizontal, 28)
             .padding(.bottom, 40)
         }
-        .background(Color.white)
-        .alert("요청 완료", isPresented: $showSuccessAlert) {
-            Button("확인", role: .cancel) {
-                // TODO: 대기 화면으로 이동 또는 메인 화면으로 이동
+    }
+    
+    // MARK: - 승인 대기 화면
+    private var waitingView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "clock.fill")
+                .font(.system(size: 80))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
+                                 Color(red: 113/255, green: 100/255, blue: 230/255)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            
+            VStack(spacing: 12) {
+                Text("승인 대기 중")
+                    .font(.system(size: 24, weight: .bold))
+                
+                Text("시설 관리자의 승인을 기다리고 있습니다.\n승인되면 알림으로 안내해드립니다.")
+                    .font(.system(size: 16))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
             }
-        } message: {
-            Text("시설 관리자의 승인을 기다려주세요.\n승인 후 서비스를 이용하실 수 있습니다.")
-        }
-        .alert("오류", isPresented: $viewModel.showError) {
-            Button("확인", role: .cancel) {}
-        } message: {
-            if let errorMessage = viewModel.errorMessage {
-                Text(errorMessage)
+            
+            Spacer()
+            
+            // 상태 확인 버튼
+            VStack(spacing: 16) {
+                Button(action: {
+                    Task {
+                        await checkApprovalStatus()
+                    }
+                }) {
+                    HStack {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                            Text("승인 상태 확인")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
+                                     Color(red: 113/255, green: 100/255, blue: 230/255)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .cornerRadius(16)
+                }
+                .disabled(viewModel.isLoading)
+                
+                Text("앱을 종료하셔도 승인 시 알림이 전송됩니다")
+                    .font(.system(size: 13))
+                    .foregroundColor(.gray)
             }
+            .padding(.horizontal, 28)
+            .padding(.bottom, 40)
         }
+        .padding(.horizontal, 28)
     }
     
     private func submitRequest() async {
@@ -148,7 +234,7 @@ struct InitialFacilityRequestView: View {
         isSubmitting = true
         
         let success = await viewModel.requestFacilityJoin(
-            userId: userId,
+            userId: userInfo.userId,
             facilityCode: facilityCode
         )
         
@@ -158,8 +244,24 @@ struct InitialFacilityRequestView: View {
             showSuccessAlert = true
         }
     }
+    
+    // ✅ 승인 상태 확인
+    private func checkApprovalStatus() async {
+        await viewModel.fetchFacilityInfo()
+        
+        // 시설이 생겼으면 자동으로 메인 화면으로 이동
+        // RoleBasedInitialView가 자동으로 처리함
+    }
 }
 
 #Preview {
-    InitialFacilityRequestView()
+    InitialFacilityRequestView(
+        userInfo: UserInfo(
+            userId: 2,
+            name: "김실험",
+            email: "lab@test.com",
+            role: "LAB_MANAGER",
+            affiliation: "테스트 연구소"
+        )
+    )
 }

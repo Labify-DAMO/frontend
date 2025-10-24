@@ -65,8 +65,9 @@ class WasteViewModel: ObservableObject {
         weight: Double,
         unit: String,
         memo: String?,
-        createdBy: Int
-    ) async -> DisposalResponse? {
+        availableUntil: String,
+        createdById: Int
+    ) async -> DisposalDetail? {
         guard let token = token else {
             handleError(NetworkError.unauthorized)
             return nil
@@ -76,19 +77,21 @@ class WasteViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
-            let request = RegisterWasteRequest(
-                lab_id: labId,
-                waste_type_id: wasteTypeId,
+            let request = RegisterWasteDetailRequest(
+                labId: labId,
+                wasteTypeId: wasteTypeId,
                 weight: weight,
                 unit: unit,
                 memo: memo,
-                created_by: createdBy
+                availableUntil: availableUntil,
+                createdById: createdById
             )
             
-            let response = try await WasteService.registerWaste(
+            let response = try await WasteService.registerWasteDetail(
                 request: request,
                 token: token
             )
+            print("✅ 폐기물 등록 성공: ID=\(response.id)")
             return response
         } catch {
             handleError(error)
@@ -201,8 +204,8 @@ struct WasteService {
         return result
     }
     
-    // MARK: - ✅ 폐기물 등록
-    static func registerWaste(request: RegisterWasteRequest, token: String) async throws -> DisposalResponse {
+    // MARK: - ✅ 폐기물 등록 (상세 정보 포함)
+    static func registerWasteDetail(request: RegisterWasteDetailRequest, token: String) async throws -> DisposalDetail {
         return try await networkManager.request(
             endpoint: "/disposals",
             method: "POST",

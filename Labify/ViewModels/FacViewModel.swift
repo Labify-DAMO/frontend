@@ -11,49 +11,88 @@ import SwiftUI
 @MainActor
 final class FacViewModel: ObservableObject {
     
-        @Published var isLoading = false
-        @Published var showError = false
-        @Published var errorMessage: String?
+    @Published var isLoading = false
+    @Published var showError = false
+    @Published var errorMessage: String?
 
-        // 시설/연구실/관계
-        @Published var facilityInfo: Facility?
-        @Published var facilityId: Int?
-        @Published var facilityJoinRequests: [FacilityJoinRequestItem] = []
-        @Published var labs: [Lab] = []
-        @Published var labRequests: [LabRequest] = []
-        @Published var facilityRelations: [FacilityRelation] = []
-        @Published var pickupFacilities: [Facility] = []
+    // 시설/연구실/관계
+    @Published var facilityInfo: Facility?
+    @Published var facilityId: Int?
+    @Published var facilityJoinRequests: [FacilityJoinRequestItem] = []
+    @Published var labs: [Lab] = []
+    @Published var labRequests: [LabRequest] = []
+    @Published var facilityRelations: [FacilityRelation] = []
+    @Published var pickupFacilities: [Facility] = []
 
-        // 최초 진입 시 시설 유무
-        var hasFacility: Bool { facilityId != nil }
+    // 최초 진입 시 시설 유무
+    var hasFacility: Bool { facilityId != nil }
 
-        private func readToken() -> String? {
-            UserDefaults.standard.string(forKey: "accessToken")
+    private func readToken() -> String? {
+        UserDefaults.standard.string(forKey: "accessToken")
+    }
+
+    /// ✅ 내 시설 정보(배정된 1개)를 읽어와 facilityId를 세팅
+    func fetchFacilityInfo() async {
+        guard let token = readToken() else {
+            print("❌ 토큰이 없습니다.")
+            return
         }
+        
+        print("🔍 시설 정보 조회 시작...")
+        isLoading = true
+        defer { isLoading = false }
 
-        /// 내 시설 정보(배정된 1개)를 읽어와 facilityId를 세팅
-        func fetchFacilityInfo() async {
-            guard let token = readToken() else { return }
-            isLoading = true
-            defer { isLoading = false }
-
-            do {
-                // /facilities → [Facility]
-                let facilities = try await FacService.fetchFacilities(token: token)
-                if let first = facilities.first {
-                    facilityInfo = first
-                    facilityId = first.id
-                } else {
+        do {
+            // ✅ 단일 객체로 받음
+            let facility = try await FacService.fetchFacilities(token: token)
+            facilityInfo = facility
+            facilityId = facility.id
+            print("✅ 시설 정보 로드 성공: \(facility.name) (ID: \(facility.id))")
+        } catch {
+            print("⚠️ 시설 정보 조회 중 에러 발생: \(error)")
+            
+            // ✅ 시설이 없는 경우 처리 (404, 500 등 다양한 케이스)
+            if let networkError = error as? NetworkError {
+                switch networkError {
+                case .httpError(let statusCode):
+                    print("📊 HTTP 상태 코드: \(statusCode)")
+                    // 404: Not Found - 시설이 없음
+                    // 500: Internal Server Error - EntityNotFoundException
+                    if statusCode == 404 || statusCode == 500 {
+                        print("⚠️ 아직 소속된 시설이 없습니다. (Status: \(statusCode))")
+                        facilityInfo = nil
+                        facilityId = nil
+                        // ✅ 사용자에게 에러 표시 안함 (정상 상황)
+                    } else {
+                        // 다른 HTTP 에러는 실제 에러로 처리
+                        errorMessage = "시설 정보를 불러올 수 없습니다. (\(statusCode))"
+                        showError = true
+                        print("❌ 시설 정보 로드 실패: HTTP \(statusCode)")
+                    }
+                case .noData:
+                    // 데이터가 없는 경우도 시설 없음으로 간주
+                    print("⚠️ 시설 데이터가 없습니다.")
                     facilityInfo = nil
                     facilityId = nil
+                case .decodingError:
+                    print("❌ 데이터 파싱 실패")
+                    errorMessage = "시설 정보 형식이 올바르지 않습니다."
+                    showError = true
+                default:
+                    print("❌ 네트워크 에러: \(networkError.localizedDescription)")
+                    errorMessage = networkError.localizedDescription
+                    showError = true
                 }
-            } catch {
+            } else {
+                // NetworkError가 아닌 경우
+                print("❌ 알 수 없는 에러: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
                 showError = true
             }
         }
+    }
     
-    /// 시설 등록 (중복 방지 추가)
+    /// ✅ 시설 등록 (중복 방지 추가)
     func registerFacility(name: String, type: String, address: String, managerId: Int) async -> Bool {
         guard let token = readToken() else { return false }
         
@@ -89,7 +128,6 @@ final class FacViewModel: ObservableObject {
             return false
         }
     }
-
 
     
     private var token: String {
@@ -218,47 +256,6 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-//    // MARK: - 시설 등록
-//    func registerFacility(name: String, type: String, address: String, managerId: Int) async -> Bool {
-//        isLoading = true
-//        errorMessage = nil
-//        
-//        do {
-//            let request = RegisterFacilityRequest(
-//                name: name,
-//                type: type,
-//                address: address,
-//                managerId: managerId
-//            )
-//            let newFacility = try await FacService.registerFacility(request: request, token: token)
-//            facilities.append(newFacility)
-//            isLoading = false
-//            return true
-//        } catch {
-//            errorMessage = error.localizedDescription
-//            showError = true
-//            print("❌ Failed to register facility: \(error)")
-//            isLoading = false
-//            return false
-//        }
-//    }
-//    
-//    // MARK: - 시설 목록 조회
-//    func fetchFacilities() async {
-//        isLoading = true
-//        errorMessage = nil
-//        
-//        do {
-//            facilities = try await FacService.fetchFacilities(token: token)
-//        } catch {
-//            errorMessage = error.localizedDescription
-//            showError = true
-//            print("❌ Failed to fetch facilities: \(error)")
-//        }
-//        
-//        isLoading = false
-//    }
-    
     // MARK: - 검색 필터링
     func filteredLabs(searchText: String) -> [Lab] {
         if searchText.isEmpty {
@@ -329,7 +326,6 @@ final class FacViewModel: ObservableObject {
                 requestId: requestId,
                 token: token
             )
-            // ✅ 여기 수정
             facilityJoinRequests.removeAll { $0.id == requestId }
             print("✅ Facility join request confirmed: \(response)")
             isLoading = false
@@ -353,7 +349,6 @@ final class FacViewModel: ObservableObject {
                 requestId: requestId,
                 token: token
             )
-            // ✅ 여기 수정
             facilityJoinRequests.removeAll { $0.id == requestId }
             print("✅ Facility join request rejected: \(response)")
             isLoading = false
@@ -442,9 +437,10 @@ final class FacViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            // 전체 시설 중 type이 "PICKUP"인 것만 필터링
-            let allFacilities = try await FacService.fetchFacilities(token: token)
-            pickupFacilities = allFacilities.filter { $0.type == "PICKUP" }
+            // ✅ 단일 시설만 받으므로 배열 처리 불가
+            // 대신 다른 API 엔드포인트가 필요할 수 있음 (백엔드 확인 필요)
+            print("⚠️ TODO: 수거업체 목록 조회 API 확인 필요")
+            pickupFacilities = []
         } catch {
             errorMessage = error.localizedDescription
             showError = true

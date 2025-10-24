@@ -53,8 +53,7 @@ class LabViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 실험실 목록 조회 (모든 역할)
-    // TODO: API 개발 대기 중
+    // MARK: - ✅ 실험실 목록 조회 (모든 역할)
     func fetchLabs() async {
         guard let token = token else {
             handleError(NetworkError.unauthorized)
@@ -64,36 +63,36 @@ class LabViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         
-        // do {
-        //     labs = try await LabService.fetchLabs(token: token)
-        // } catch {
-        //     handleError(error)
-        // }
-        
-        print("⚠️ TODO: 실험실 목록 조회 API 개발 대기 중")
-        labs = []
+        do {
+            // FacService의 fetchLabs 사용
+            labs = try await FacService.fetchLabs(token: token)
+            print("✅ 실험실 목록 조회 성공: \(labs.count)개")
+        } catch {
+            handleError(error)
+            labs = [] // 에러 발생 시 빈 배열로 초기화
+        }
     }
     
     // MARK: - 내 실험실/부서 조회 (LAB)
     // TODO: API 개발 대기 중
-    func fetchMyLab() async {
-        guard let token = token else {
-            handleError(NetworkError.unauthorized)
-            return
-        }
-        
-        isLoading = true
-        defer { isLoading = false }
-        
-        // do {
-        //     myLab = try await LabService.fetchMyLab(token: token)
-        // } catch {
-        //     handleError(error)
-        // }
-        
-        print("⚠️ TODO: 내 실험실 조회 API 개발 대기 중")
-        myLab = nil
-    }
+//    func fetchMyLab() async {
+//        guard let token = token else {
+//            handleError(NetworkError.unauthorized)
+//            return
+//        }
+//        
+//        isLoading = true
+//        defer { isLoading = false }
+//        
+//        // do {
+//        //     myLab = try await LabService.fetchMyLab(token: token)
+//        // } catch {
+//        //     handleError(error)
+//        // }
+//        
+//        print("⚠️ TODO: 내 실험실 조회 API 개발 대기 중")
+//        myLab = nil
+//    }
     
     // MARK: - ✅ 실험실 등록/개설 (FAC)
     func registerLab(name: String, location: String, facilityId: Int) async -> Bool {
@@ -114,6 +113,7 @@ class LabViewModel: ObservableObject {
             
             let newLab = try await LabService.registerLab(request: request, token: token)
             labs.append(newLab)
+            print("✅ 실험실 등록 성공: \(newLab.name)")
             return true
         } catch {
             handleError(error)
@@ -142,6 +142,7 @@ class LabViewModel: ObservableObject {
             if let index = labs.firstIndex(where: { $0.id == labId }) {
                 labs[index] = updatedLab
             }
+            print("✅ 실험실 수정 성공: \(updatedLab.name)")
             return true
         } catch {
             handleError(error)
@@ -161,6 +162,7 @@ class LabViewModel: ObservableObject {
         
         do {
             labRequests = try await LabService.fetchLabRequests(token: token)
+            print("✅ 실험실 개설 요청 목록 조회 성공: \(labRequests.count)개")
         } catch {
             handleError(error)
         }
@@ -186,6 +188,7 @@ class LabViewModel: ObservableObject {
             labRequests.removeAll { $0.id == requestId }
             // 실험실 목록에 추가
             labs.append(approvedLab)
+            print("✅ 실험실 개설 요청 승인 성공: \(approvedLab.name)")
         } catch {
             handleError(error)
         }
@@ -209,6 +212,7 @@ class LabViewModel: ObservableObject {
             
             // 요청 목록에서 제거
             labRequests.removeAll { $0.id == requestId }
+            print("✅ 실험실 개설 요청 거절 성공")
         } catch {
             handleError(error)
         }

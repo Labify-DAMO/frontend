@@ -172,25 +172,11 @@ struct LoginView: View {
                 SignUpView()
             }
             .navigationDestination(isPresented: $navigateToRoleView) {
-                // role에 따라 화면 분기
-                switch vm.userInfo?.role {
-                case "LAB_MANAGER":
-                    LabTabView(userInfo: vm.userInfo!, authVM: vm)
-                case "PICKUP_MANAGER":
-                    //PickupManagerView()
-                    PickTabView(userInfo: vm.userInfo!, authVM: vm)
-                case "FACILITY_MANAGER":
-                    FacTabView(userInfo: vm.userInfo!, authVM: vm)
-//                    FacTabView(userInfo: UserInfo(
-//                        userId: 3,
-//                        name: "이시설",
-//                        email: "facility@test.com",
-//                        role: "FACILITY_MANAGER",
-//                        affiliation: "종합관리센터"
-//                    ),
-//                    authVM: AuthViewModel())
-                default:
-                    Text("알 수 없는 역할")
+                // ✅ RoleBasedInitialView로 변경
+                if let userInfo = vm.userInfo {
+                    RoleBasedInitialView(userInfo: userInfo, authVM: vm)
+                } else {
+                    Text("사용자 정보를 불러올 수 없습니다")
                 }
             }
         }

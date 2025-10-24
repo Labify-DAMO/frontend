@@ -23,6 +23,7 @@ struct LabRegistrationView: View {
     @State private var navigateToWeight = false
     @State private var isAnalyzing = false
     @State private var showManualClassification = false
+    @State private var isImageExpanded = true
     
     let categories = ["감염성", "화학", "일반"]
     
@@ -136,44 +137,111 @@ struct LabRegistrationView: View {
     
     private var cameraSection: some View {
         GeometryReader { geometry in
-            let size = min(geometry.size.width - 40, geometry.size.height - 40)
+            let expandedSize = min(geometry.size.width - 40, geometry.size.height - 40)
             
             ZStack {
                 if let image = selectedImage {
-                    // 선택된 이미지 표시
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: size, height: size)
-                        .clipShape(RoundedRectangle(cornerRadius: 24))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24)
-                                .stroke(Color(red: 30/255, green: 59/255, blue: 207/255), lineWidth: 3)
-                        )
-                    
-                    // 재촬영 버튼
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Button(action: {
-                                // 결과 초기화
-                                viewModel.aiClassifyResult = nil
-                                showManualClassification = false
-                                manualCategory = ""
-                                selectedCategory = ""
-                                selectedImage = nil
-                                showingActionSheet = true
-                            }) {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .frame(width: 44, height: 44)
-                                    .background(Color.black.opacity(0.6))
-                                    .clipShape(Circle())
+                    if isImageExpanded {
+                        // 확장된 이미지 표시
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: expandedSize, height: expandedSize)
+                            .clipShape(RoundedRectangle(cornerRadius: 24))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24)
+                                    .stroke(Color(red: 30/255, green: 59/255, blue: 207/255), lineWidth: 3)
+                            )
+                        
+                        // 재촬영 버튼
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Button(action: {
+                                    // 결과 초기화
+                                    viewModel.aiClassifyResult = nil
+                                    showManualClassification = false
+                                    manualCategory = ""
+                                    selectedCategory = ""
+                                    selectedImage = nil
+                                    isImageExpanded = true
+                                    showingActionSheet = true
+                                }) {
+                                    Image(systemName: "arrow.clockwise")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(width: 44, height: 44)
+                                        .background(Color.black.opacity(0.6))
+                                        .clipShape(Circle())
+                                }
+                                .padding(12)
                             }
-                            .padding(12)
+                            Spacer()
                         }
-                        Spacer()
+                    } else {
+                        // 접힌 상태: 작은 썸네일 표시
+                        Button(action: {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                isImageExpanded = true
+                            }
+                        }) {
+                            HStack(spacing: 16) {
+                                // 썸네일 이미지
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 80, height: 80)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color(red: 30/255, green: 59/255, blue: 207/255), lineWidth: 2)
+                                    )
+                                
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("폐기물 이미지")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                    
+                                    Text("탭하여 확대")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.gray)
+                                }
+                                
+                                Spacer()
+                                
+                                // 확대 아이콘
+                                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.gray)
+                                
+                                // 재촬영 버튼
+                                Button(action: {
+                                    viewModel.aiClassifyResult = nil
+                                    showManualClassification = false
+                                    manualCategory = ""
+                                    selectedCategory = ""
+                                    selectedImage = nil
+                                    isImageExpanded = true
+                                    showingActionSheet = true
+                                }) {
+                                    Image(systemName: "arrow.clockwise")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
+                                        .frame(width: 40, height: 40)
+                                        .background(Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.1))
+                                        .clipShape(Circle())
+                                }
+                                .padding(.leading, 8)
+                            }
+                            .padding(20)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color.white)
+                                    .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
+                            )
+                            .padding(.horizontal, 20)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 } else {
                     // 배경 그라데이션
@@ -188,13 +256,13 @@ struct LabRegistrationView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: size, height: size)
+                        .frame(width: expandedSize, height: expandedSize)
                     
                     // 점선 테두리
                     RoundedRectangle(cornerRadius: 24)
                         .stroke(style: StrokeStyle(lineWidth: 3, dash: [12, 8]))
                         .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.4))
-                        .frame(width: size, height: size)
+                        .frame(width: expandedSize, height: expandedSize)
                     
                     // 카메라 버튼
                     Button(action: {
@@ -220,7 +288,8 @@ struct LabRegistrationView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(height: 400)
+        .frame(height: (selectedImage != nil && !isImageExpanded) ? 120 : 400)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isImageExpanded)
         .padding(.top, 20)
     }
     
@@ -287,6 +356,31 @@ struct LabRegistrationView: View {
                     .foregroundColor(.primary)
                 
                 Spacer()
+                
+                // 이미지 접기 버튼
+                if isImageExpanded {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            isImageExpanded = false
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Text("이미지 접기")
+                                .font(.system(size: 14))
+                                .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
+                            
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.1))
+                        )
+                    }
+                }
             }
             
             VStack(spacing: 16) {

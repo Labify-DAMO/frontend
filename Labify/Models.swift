@@ -9,26 +9,6 @@ import Foundation
 
 // MARK: - ========== USER MODELS ==========
 
-//struct UserInfo: Codable {
-//    let userId: Int
-//    let name: String
-//    let email: String
-//    let role: String
-//    let affiliation: String
-//}
-//
-//struct TokenResponse: Codable {
-//    let accessToken: String
-//    let refreshToken: String
-//    
-//    enum CodingKeys: String, CodingKey {
-//        case accessToken = "access_token"
-//        case refreshToken = "refresh_token" 
-//    }
-//}
-
-// MARK: - ========== USER MODELS ==========
-
 struct UserInfo: Codable {
     let userId: Int
     let name: String
@@ -171,6 +151,30 @@ struct DisposalResponse: Codable {
         case qr_code_url
         case status
     }
+}
+
+// 폐기물 등록 요청 (상세 버전)
+struct RegisterWasteDetailRequest: Codable {
+    let labId: Int
+    let wasteTypeId: Int
+    let weight: Double
+    let unit: String
+    let memo: String?
+    let availableUntil: String
+    let createdById: Int
+}
+
+// 폐기물 등록 응답 (상세 버전)
+struct DisposalDetail: Codable {
+    let id: Int
+    let labName: String
+    let wasteTypeName: String
+    let weight: Double
+    let unit: String
+    let memo: String?
+    let status: String
+    let createdAt: String
+    let availableUntil: String
 }
 
 // MARK: - ========== PICKUP MODELS ==========

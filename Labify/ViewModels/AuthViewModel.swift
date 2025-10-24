@@ -143,6 +143,13 @@ class AuthViewModel: ObservableObject {
             
             // 로그인 후 사용자 정보 가져오기
             try await fetchUserInfo()
+            
+            // ✅ userId 저장 추가
+            if let userId = userInfo?.userId {
+                UserDefaults.standard.set(userId, forKey: "userId")
+                print("✅ userId 저장 완료: \(userId)")
+            }
+            
             isLoading = false
             return true
         } catch let error as NetworkError {
@@ -175,6 +182,9 @@ class AuthViewModel: ObservableObject {
             role = info.role
             name = info.name
             affiliation = info.affiliation
+            
+            // ✅ 사용자 정보 로드 시 userId도 저장
+            UserDefaults.standard.set(info.userId, forKey: "userId")
         } catch {
             // 토큰 만료 시 재발급
             if await refreshAccessToken() {
@@ -209,6 +219,10 @@ class AuthViewModel: ObservableObject {
         userInfo = nil
         isAuthenticated = false
         clearTokens()
+        
+        // ✅ userId도 함께 삭제
+        UserDefaults.standard.removeObject(forKey: "userId")
+        print("✅ userId 삭제 완료")
     }
     
     // MARK: - 토큰 저장/로드
@@ -227,7 +241,14 @@ class AuthViewModel: ObservableObject {
         
         if accessToken != nil {
             isAuthenticated = true
-            Task { try? await fetchUserInfo() }
+            Task {
+                try? await fetchUserInfo()
+                
+                // ✅ 사용자 정보를 불러온 후 userId 동기화
+                if let userId = userInfo?.userId {
+                    UserDefaults.standard.set(userId, forKey: "userId")
+                }
+            }
         }
     }
     

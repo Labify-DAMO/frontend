@@ -12,7 +12,11 @@ struct WeightInputView: View {
     @State private var weight: Double = 0.0
     @State private var unit = "kg"
     @State private var note = ""
-    @State private var showingQR = false
+    @State private var navigateToSummary = false
+    
+    // AI 분류 결과와 수동 분류를 전달받기 위한 프로퍼티
+    let aiResult: AIClassifyResponse?
+    let manualCategory: String?
     
     private var nextButtonGradient: LinearGradient {
         if weight == 0 {
@@ -152,7 +156,7 @@ struct WeightInputView: View {
             
             // 다음 버튼
             Button(action: {
-                showingQR = true
+                navigateToSummary = true
             }) {
                 Text("다음")
                     .font(.system(size: 18, weight: .semibold))
@@ -183,8 +187,14 @@ struct WeightInputView: View {
                     .font(.system(size: 17, weight: .semibold))
             }
         }
-        .sheet(isPresented: $showingQR) {
-            QRCodeView()
+        .navigationDestination(isPresented: $navigateToSummary) {
+            WasteSummaryView(
+                weight: weight,
+                unit: unit,
+                memo: note,
+                aiResult: aiResult,
+                manualCategory: manualCategory
+            )
         }
     }
 }
@@ -214,6 +224,6 @@ struct QuickSelectButton: View {
 
 #Preview {
     NavigationStack {
-        WeightInputView()
+        WeightInputView(aiResult: nil, manualCategory: "화학")
     }
 }
