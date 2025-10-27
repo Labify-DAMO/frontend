@@ -2,7 +2,7 @@
 //  LabRegistrationView.swift
 //  Labify
 //
-//  Created by KITS on 10/13/25.
+//  Created by F_S on 10/13/25.
 //
 
 import SwiftUI
@@ -31,21 +31,34 @@ struct LabRegistrationView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 // 카메라 영역
-                cameraSection
+                WasteCameraSection(
+                    selectedImage: $selectedImage,
+                    isImageExpanded: $isImageExpanded,
+                    showingActionSheet: $showingActionSheet,
+                    onReset: resetClassification
+                )
                 
                 ScrollView {
                     VStack(spacing: 24) {
                         // AI 분류 결과
                         if let result = viewModel.aiClassifyResult {
-                            aiResultSection(result: result)
+                            AIResultSection(
+                                result: result,
+                                isImageExpanded: isImageExpanded,
+                                onCollapseImage: {
+                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                        isImageExpanded = false
+                                    }
+                                }
+                            )
                         }
                         
                         // 분석 중 표시
                         if isAnalyzing {
-                            analyzingSection
+                            AnalyzingSection()
                         }
                         
-                        // AI 분류 시작 버튼 (이미지만 선택하고 아직 분석 안 한 경우)
+                        // AI 분류 시작 버튼
                         if selectedImage != nil && viewModel.aiClassifyResult == nil && !isAnalyzing {
                             analyzeButton
                         }
@@ -56,7 +69,10 @@ struct LabRegistrationView: View {
                         }
                         
                         if showManualClassification {
-                            manualClassificationSection
+                            ManualClassificationSection(
+                                categories: categories,
+                                selectedCategory: $manualCategory
+                            )
                         }
                     }
                     .padding(20)
@@ -82,7 +98,7 @@ struct LabRegistrationView: View {
                 nextButton
             }
             .navigationDestination(isPresented: $navigateToWeight) {
-                WeightInputView()
+                WeightInputView(aiResult: viewModel.aiClassifyResult, manualCategory: manualCategory)
             }
             .sheet(isPresented: $showingActionSheet) {
                 ImageSourceSheet(
@@ -135,164 +151,6 @@ struct LabRegistrationView: View {
         }
     }
     
-    private var cameraSection: some View {
-        GeometryReader { geometry in
-            let expandedSize = min(geometry.size.width - 40, geometry.size.height - 40)
-            
-            ZStack {
-                if let image = selectedImage {
-                    if isImageExpanded {
-                        // 확장된 이미지 표시
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: expandedSize, height: expandedSize)
-                            .clipShape(RoundedRectangle(cornerRadius: 24))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24)
-                                    .stroke(Color(red: 30/255, green: 59/255, blue: 207/255), lineWidth: 3)
-                            )
-                        
-                        // 재촬영 버튼
-                        VStack {
-                            HStack {
-                                Spacer()
-                                Button(action: {
-                                    // 결과 초기화
-                                    viewModel.aiClassifyResult = nil
-                                    showManualClassification = false
-                                    manualCategory = ""
-                                    selectedCategory = ""
-                                    selectedImage = nil
-                                    isImageExpanded = true
-                                    showingActionSheet = true
-                                }) {
-                                    Image(systemName: "arrow.clockwise")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundColor(.white)
-                                        .frame(width: 44, height: 44)
-                                        .background(Color.black.opacity(0.6))
-                                        .clipShape(Circle())
-                                }
-                                .padding(12)
-                            }
-                            Spacer()
-                        }
-                    } else {
-                        // 접힌 상태: 작은 썸네일 표시
-                        Button(action: {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                isImageExpanded = true
-                            }
-                        }) {
-                            HStack(spacing: 16) {
-                                // 썸네일 이미지
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 80, height: 80)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color(red: 30/255, green: 59/255, blue: 207/255), lineWidth: 2)
-                                    )
-                                
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("폐기물 이미지")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.primary)
-                                    
-                                    Text("탭하여 확대")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.gray)
-                                }
-                                
-                                Spacer()
-                                
-                                // 확대 아이콘
-                                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.gray)
-                                
-                                // 재촬영 버튼
-                                Button(action: {
-                                    viewModel.aiClassifyResult = nil
-                                    showManualClassification = false
-                                    manualCategory = ""
-                                    selectedCategory = ""
-                                    selectedImage = nil
-                                    isImageExpanded = true
-                                    showingActionSheet = true
-                                }) {
-                                    Image(systemName: "arrow.clockwise")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
-                                        .frame(width: 40, height: 40)
-                                        .background(Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.1))
-                                        .clipShape(Circle())
-                                }
-                                .padding(.leading, 8)
-                            }
-                            .padding(20)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.white)
-                                    .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
-                            )
-                            .padding(.horizontal, 20)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                } else {
-                    // 배경 그라데이션
-                    RoundedRectangle(cornerRadius: 24)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 255/255, green: 255/255, blue: 255/255).opacity(0.9),
-                                    Color(red: 113/255, green: 100/255, blue: 230/255).opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: expandedSize, height: expandedSize)
-                    
-                    // 점선 테두리
-                    RoundedRectangle(cornerRadius: 24)
-                        .stroke(style: StrokeStyle(lineWidth: 3, dash: [12, 8]))
-                        .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.4))
-                        .frame(width: expandedSize, height: expandedSize)
-                    
-                    // 카메라 버튼
-                    Button(action: {
-                        showingActionSheet = true
-                    }) {
-                        VStack(spacing: 16) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.15))
-                                    .frame(width: 80, height: 80)
-                                
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 36))
-                                    .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
-                            }
-                            
-                            Text("폐기물 촬영")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .frame(height: (selectedImage != nil && !isImageExpanded) ? 120 : 400)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isImageExpanded)
-        .padding(.top, 20)
-    }
-    
     private var analyzeButton: some View {
         Button(action: {
             if let image = selectedImage {
@@ -317,142 +175,6 @@ struct LabRegistrationView: View {
                 )
             )
             .cornerRadius(16)
-        }
-    }
-    
-    private var analyzingSection: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-                .tint(Color(red: 30/255, green: 59/255, blue: 207/255))
-                .padding(.bottom, 8)
-            
-            Text("AI가 폐기물을 분석하고 있습니다")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.primary)
-            
-            Text("잠시만 기다려주세요...")
-                .font(.system(size: 14))
-                .foregroundColor(.gray)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(red: 244/255, green: 247/255, blue: 255/255))
-        )
-    }
-    
-    private func aiResultSection(result: AIClassifyResponse) -> some View {
-        VStack(spacing: 20) {
-            // 헤더
-            HStack {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 22))
-                    .foregroundColor(.green)
-                
-                Text("AI 분류 완료")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                // 이미지 접기 버튼
-                if isImageExpanded {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            isImageExpanded = false
-                        }
-                    }) {
-                        HStack(spacing: 6) {
-                            Text("이미지 접기")
-                                .font(.system(size: 14))
-                                .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
-                            
-                            Image(systemName: "chevron.up")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.1))
-                        )
-                    }
-                }
-            }
-            
-            VStack(spacing: 16) {
-                // 대분류 (Coarse)
-                ClassificationRow(
-                    icon: "square.grid.2x2",
-                    title: "대분류",
-                    value: result.displayCoarse,
-                    color: Color(red: 30/255, green: 59/255, blue: 207/255)
-                )
-                
-                Divider()
-                    .padding(.horizontal, 8)
-                
-                // 세분류 (Fine)
-                ClassificationRow(
-                    icon: "list.bullet.rectangle",
-                    title: "세분류",
-                    value: result.displayFine,
-                    color: Color(red: 113/255, green: 100/255, blue: 230/255)
-                )
-                
-                Divider()
-                    .padding(.horizontal, 8)
-                
-                // 생물학적 폐기물 여부
-                ClassificationRow(
-                    icon: result.is_bio ? "cross.circle.fill" : "cross.circle",
-                    title: "생물학적 위험",
-                    value: result.is_bio ? "예" : "아니오",
-                    color: result.is_bio ? .red : .gray
-                )
-                
-                // OCR 텍스트 (있는 경우)
-                if result.is_ocr, let ocrText = result.ocr_text, !ocrText.isEmpty {
-                    Divider()
-                        .padding(.horizontal, 8)
-                    
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "doc.text.magnifyingglass")
-                                .font(.system(size: 16))
-                                .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
-                            
-                            Text("감지된 텍스트")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.primary)
-                        }
-                        
-                        Text(ocrText)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.primary)
-                            .padding(14)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.gray.opacity(0.08))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                            )
-                    }
-                    .padding(.top, 4)
-                }
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
-            )
         }
     }
     
@@ -486,32 +208,6 @@ struct LabRegistrationView: View {
         }
     }
     
-    private var manualClassificationSection: some View {
-        VStack(spacing: 16) {
-            Text("원하는 분류를 선택하세요")
-                .font(.system(size: 14))
-                .foregroundColor(.gray)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            VStack(spacing: 12) {
-                ForEach(categories, id: \.self) { category in
-                    ManualCategoryButton(
-                        title: category,
-                        isSelected: manualCategory == category
-                    ) {
-                        manualCategory = category
-                    }
-                }
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
-        )
-    }
-    
     private var nextButton: some View {
         Button(action: {
             navigateToWeight = true
@@ -538,12 +234,21 @@ struct LabRegistrationView: View {
         .background(Color.white)
     }
     
-    // MARK: - 이미지 분류 핸들러
+    // MARK: - Helper Methods
+    
+    private func resetClassification() {
+        viewModel.aiClassifyResult = nil
+        showManualClassification = false
+        manualCategory = ""
+        selectedCategory = ""
+        selectedImage = nil
+        isImageExpanded = true
+    }
+    
     private func classifyImage(_ image: UIImage) {
         isAnalyzing = true
         
         Task {
-            // 이미지 리사이즈 및 압축
             guard let compressedData = compressImage(image) else {
                 isAnalyzing = false
                 return
@@ -556,15 +261,12 @@ struct LabRegistrationView: View {
         }
     }
     
-    // 이미지 압축 (백엔드 제한에 맞춤)
     private func compressImage(_ image: UIImage) -> Data? {
-        // 백엔드 기본 제한이 1MB일 경우를 대비해 안전하게 압축
-        let maxSize: CGFloat = 800 // AI 분석에 충분한 크기
-        let maxFileSize = 900_000 // 900KB (여유있게)
+        let maxSize: CGFloat = 800
+        let maxFileSize = 900_000
         
         print("📸 Original image size: \(image.size.width)x\(image.size.height)")
         
-        // 1단계: 이미지 리사이즈
         var resizedImage = image
         if image.size.width > maxSize || image.size.height > maxSize {
             let ratio = min(maxSize / image.size.width, maxSize / image.size.height)
@@ -575,11 +277,10 @@ struct LabRegistrationView: View {
             resizedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
             UIGraphicsEndImageContext()
             
-            print("📏 Resized to: \(newSize.width)x\(newSize.height)")
+            print("🔍 Resized to: \(newSize.width)x\(newSize.height)")
         }
         
-        // 2단계: 품질 조정하면서 압축
-        var compression: CGFloat = 0.7 // 시작 품질
+        var compression: CGFloat = 0.7
         var imageData = resizedImage.jpegData(compressionQuality: compression)
         
         var attempts = 0
@@ -588,7 +289,7 @@ struct LabRegistrationView: View {
             imageData = resizedImage.jpegData(compressionQuality: compression)
             attempts += 1
             
-            if attempts > 10 { // 무한 루프 방지
+            if attempts > 10 {
                 print("⚠️ Maximum compression attempts reached")
                 break
             }
@@ -604,298 +305,6 @@ struct LabRegistrationView: View {
         }
         
         return imageData
-    }
-}
-
-// MARK: - 분류 정보 행
-struct ClassificationRow: View {
-    let icon: String
-    let title: String
-    let value: String
-    let color: Color
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundColor(color)
-                .frame(width: 28)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 13))
-                    .foregroundColor(.gray)
-                
-                Text(value)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
-            }
-            
-            Spacer()
-        }
-    }
-}
-
-// MARK: - 수동 분류 버튼
-struct ManualCategoryButton: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(isSelected ? .white : .primary)
-                
-                Spacer()
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.white)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(
-                        isSelected ?
-                        LinearGradient(
-                            colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                                     Color(red: 113/255, green: 100/255, blue: 230/255)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ) :
-                        LinearGradient(
-                            colors: [Color(red: 244/255, green: 247/255, blue: 255/255),
-                                     Color(red: 244/255, green: 247/255, blue: 255/255)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.clear : Color.gray.opacity(0.2), lineWidth: 1)
-            )
-        }
-    }
-}
-
-// MARK: - 이미지 확인 뷰 (카카오톡 스타일)
-struct ImageConfirmView: View {
-    let image: UIImage
-    let onConfirm: () -> Void
-    let onRetake: () -> Void
-    let onCancel: () -> Void
-    
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            
-            VStack {
-                // 상단 취소 버튼
-                HStack {
-                    Button(action: onCancel) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                
-                Spacer()
-                
-                // 이미지
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                
-                Spacer()
-                
-                // 하단 버튼들
-                HStack(spacing: 40) {
-                    // 다시 찍기
-                    Button(action: onRetake) {
-                        VStack(spacing: 8) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 28))
-                                .foregroundColor(.white)
-                                .frame(width: 60, height: 60)
-                                .background(Color.white.opacity(0.2))
-                                .clipShape(Circle())
-                            
-                            Text("다시 찍기")
-                                .font(.system(size: 13))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    
-                    // 사용하기
-                    Button(action: onConfirm) {
-                        VStack(spacing: 8) {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 28, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(width: 60, height: 60)
-                                .background(Color(red: 30/255, green: 59/255, blue: 207/255))
-                                .clipShape(Circle())
-                            
-                            Text("사용하기")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                    }
-                }
-                .padding(.bottom, 40)
-            }
-        }
-    }
-}
-
-// MARK: - 이미지 소스 선택 시트
-struct ImageSourceSheet: View {
-    @Binding var showingCamera: Bool
-    @Binding var showingImagePicker: Bool
-    @Binding var isPresented: Bool
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // 카메라로 촬영하기
-            Button(action: {
-                isPresented = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    showingCamera = true
-                }
-            }) {
-                HStack(spacing: 16) {
-                    Image(systemName: "camera.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
-                        .frame(width: 32)
-                    
-                    Text("카메라로 촬영하기")
-                        .font(.system(size: 17))
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 16)
-                .background(Color.white)
-            }
-            
-            Divider()
-                .padding(.leading, 72)
-            
-            // 갤러리에서 선택하기
-            Button(action: {
-                isPresented = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    showingImagePicker = true
-                }
-            }) {
-                HStack(spacing: 16) {
-                    Image(systemName: "photo.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
-                        .frame(width: 32)
-                    
-                    Text("갤러리에서 선택하기")
-                        .font(.system(size: 17))
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 16)
-                .background(Color.white)
-            }
-        }
-        .background(Color(UIColor.systemBackground))
-    }
-}
-
-// MARK: - 카메라 뷰
-struct CameraView: UIViewControllerRepresentable {
-    @Binding var capturedImage: UIImage?
-    @Environment(\.dismiss) var dismiss
-    
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        return picker
-    }
-    
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: CameraView
-        
-        init(_ parent: CameraView) {
-            self.parent = parent
-        }
-        
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let image = info[.originalImage] as? UIImage {
-                parent.capturedImage = image
-            }
-            parent.dismiss()
-        }
-        
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
-        }
-    }
-}
-
-// MARK: - 이미지 피커 (갤러리)
-struct ImagePicker: UIViewControllerRepresentable {
-    @Binding var image: UIImage?
-    @Environment(\.dismiss) var dismiss
-    
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .photoLibrary
-        picker.delegate = context.coordinator
-        return picker
-    }
-    
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: ImagePicker
-        
-        init(_ parent: ImagePicker) {
-            self.parent = parent
-        }
-        
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let image = info[.originalImage] as? UIImage {
-                parent.image = image
-            }
-            parent.dismiss()
-        }
-        
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
-        }
     }
 }
 

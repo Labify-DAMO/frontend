@@ -2,7 +2,7 @@
 //  LoginView.swift
 //  Labify
 //
-//  Created by F_s on 9/22/25.
+//  Created by F_S on 9/22/25.
 //
 
 import SwiftUI

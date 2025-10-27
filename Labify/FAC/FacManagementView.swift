@@ -117,7 +117,6 @@ struct FacManagementView: View {
 
 // MARK: - 시설 없음 안내 뷰
 private extension FacManagementView {
-    // ✅ viewModel을 파라미터로 받지 않고 computed property로
     var noFacilityEmptyState: some View {
         VStack(spacing: 20) {
             Spacer()
@@ -134,7 +133,7 @@ private extension FacManagementView {
                 .padding(.horizontal, 24)
             
             Button {
-                if viewModel.hasFacility {  // ✅ 이제 접근 가능
+                if viewModel.hasFacility {
                     viewModel.errorMessage = "이미 등록된 시설이 있습니다."
                     viewModel.showError = true
                 } else {
@@ -333,8 +332,9 @@ private extension FacManagementView {
         Group {
             if viewModel.isLoading {
                 ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.labRequests.isEmpty {
-                EmptyStateView(icon: "doc.text.magnifyingglass", text: "대기 중인 실험실 개설 요청이 없습니다")
+                FacEmptyStateView(icon: "doc.text.magnifyingglass", text: "대기 중인 실험실 개설 요청이 없습니다")
             } else {
                 ScrollView {
                     VStack(spacing: 12) {
@@ -348,6 +348,7 @@ private extension FacManagementView {
                     }
                     .padding(.horizontal)
                     .padding(.top, 20)
+                    .padding(.bottom, 100)
                 }
             }
         }
@@ -357,8 +358,9 @@ private extension FacManagementView {
         Group {
             if viewModel.isLoading {
                 ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.facilityJoinRequests.isEmpty {
-                EmptyStateView(icon: "person.badge.plus", text: "대기 중인 시설 가입 요청이 없습니다")
+                FacEmptyStateView(icon: "person.badge.plus", text: "대기 중인 시설 가입 요청이 없습니다")
             } else {
                 ScrollView {
                     VStack(spacing: 12) {
@@ -372,14 +374,15 @@ private extension FacManagementView {
                     }
                     .padding(.horizontal)
                     .padding(.top, 20)
+                    .padding(.bottom, 100)
                 }
             }
         }
     }
 }
 
-// MARK: - 공용 빈 상태 뷰
-private struct EmptyStateView: View {
+// MARK: - 공용 빈 상태 뷰 (이름 변경: EmptyStateView → FacEmptyStateView)
+private struct FacEmptyStateView: View {
     let icon: String
     let text: String
     var body: some View {

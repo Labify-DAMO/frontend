@@ -2,7 +2,7 @@
 //  SplashView.swift
 //  Labify
 //
-//  Created by F_s on 10/14/25.
+//  Created by F_S on 10/14/25.
 //
 
 import SwiftUI
