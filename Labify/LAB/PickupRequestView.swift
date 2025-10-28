@@ -23,7 +23,6 @@ extension Lab {
 struct PickupRequestView: View {
     @Environment(\.dismiss) var dismiss
     @StateObject private var labViewModel = LabViewModel()
-    @StateObject private var wasteViewModel = WasteViewModel()
     
     @State private var searchText = ""
     @State private var selectedFilter = "9월"
@@ -67,7 +66,7 @@ struct PickupRequestView: View {
                 if let lab = selectedLab {
                     WasteSelectionView(
                         lab: lab,
-                        wasteViewModel: wasteViewModel
+                        labViewModel: labViewModel
                     )
                 }
             }
@@ -205,12 +204,18 @@ struct PickupRequestView: View {
 struct WasteSelectionView: View {
     @Environment(\.dismiss) var dismiss
     let lab: Lab
-    @ObservedObject var wasteViewModel: WasteViewModel
+    @ObservedObject var labViewModel: LabViewModel
+    
+    // ✅ WasteViewModel 대신 직접 상태 관리
+    @State private var disposalItems: [DisposalItemData] = []
+    @State private var isLoadingWastes = false
+    @State private var wasteError: String?
+    @State private var showWasteError = false
     
     @State private var selectedDate = Date()
     @State private var selectedWastes: Set<Int> = []
     @State private var showingDatePicker = false
-    @State private var isSubmitting = false
+    @State private var showSuccessAlert = false
     
     var body: some View {
         NavigationStack {
@@ -244,17 +249,24 @@ struct WasteSelectionView: View {
                 requestButton
             }
             .task {
-                await wasteViewModel.fetchWastes()
+                await loadDisposalItems()
             }
-            .alert("오류", isPresented: $wasteViewModel.showError) {
+            .alert("성공", isPresented: $showSuccessAlert) {
+                Button("확인") {
+                    dismiss()
+                }
+            } message: {
+                Text("수거 요청이 성공적으로 생성되었습니다.")
+            }
+            .alert("오류", isPresented: $showWasteError) {
                 Button("확인", role: .cancel) {}
             } message: {
-                if let error = wasteViewModel.errorMessage {
+                if let error = wasteError {
                     Text(error)
                 }
             }
             .overlay {
-                if wasteViewModel.isLoading || isSubmitting {
+                if isLoadingWastes || labViewModel.isLoading {
                     ProgressView()
                         .scaleEffect(1.5)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -333,7 +345,7 @@ struct WasteSelectionView: View {
             .padding(.horizontal, 20)
             
             ScrollView {
-                if wasteViewModel.wastes.isEmpty {
+                if disposalItems.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "tray")
                             .font(.system(size: 50))
@@ -346,7 +358,7 @@ struct WasteSelectionView: View {
                     .padding(.top, 50)
                 } else {
                     VStack(spacing: 12) {
-                        ForEach(wasteViewModel.wastes) { waste in
+                        ForEach(disposalItems) { waste in
                             WasteSelectionCard(
                                 waste: waste,
                                 isSelected: selectedWastes.contains(waste.id)
@@ -387,7 +399,7 @@ struct WasteSelectionView: View {
                 )
                 .cornerRadius(16)
         }
-        .disabled(selectedWastes.isEmpty || isSubmitting)
+        .disabled(selectedWastes.isEmpty || labViewModel.isLoading)
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(Color.white)
@@ -399,20 +411,49 @@ struct WasteSelectionView: View {
         return formatter.string(from: selectedDate)
     }
     
-    private func createPickupRequest() {
-        isSubmitting = true
+    private var formattedDateWithTime: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return formatter.string(from: selectedDate)
+    }
+    
+    // ✅ 폐기물 목록 로드 (LabService 사용)
+    private func loadDisposalItems() async {
+        guard let token = UserDefaults.standard.string(forKey: "accessToken") else {
+            wasteError = "인증 토큰이 없습니다."
+            showWasteError = true
+            return
+        }
         
+        isLoadingWastes = true
+        defer { isLoadingWastes = false }
+        
+        do {
+            // LabService의 fetchDisposalItems 메서드 사용
+            let response = try await WasteService.fetchDisposalItems(
+                labId: lab.id,
+                token: token
+            )
+            disposalItems = response.disposalItems
+            print("✅ 폐기물 목록 조회 성공: \(disposalItems.count)개")
+        } catch {
+            wasteError = "폐기물 목록을 불러오는데 실패했습니다."
+            showWasteError = true
+            print("❌ 폐기물 목록 조회 실패: \(error)")
+        }
+    }
+    
+    private func createPickupRequest() {
         Task {
-            // TODO: 수거 요청 API 호출
-            // POST /pickup-requests
-            // Body: { labId, requesterId, requestDate, disposalIds }
-            print("수거 요청 생성: labId=\(lab.id), date=\(formattedDate), disposalIds=\(Array(selectedWastes))")
+            let success = await labViewModel.createPickupRequest(
+                labId: lab.id,
+                requestDate: formattedDateWithTime,
+                disposalItemIds: Array(selectedWastes)
+            )
             
-            // 임시 딜레이 (실제로는 API 호출)
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            
-            isSubmitting = false
-            dismiss()
+            if success {
+                showSuccessAlert = true
+            }
         }
     }
 }
@@ -501,7 +542,7 @@ struct LabSelectionCard: View {
 
 // MARK: - Waste Selection Card
 struct WasteSelectionCard: View {
-    let waste: Waste
+    let waste: DisposalItemData
     let isSelected: Bool
     let action: () -> Void
     

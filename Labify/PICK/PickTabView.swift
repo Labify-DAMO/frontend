@@ -52,8 +52,8 @@ struct PickTabView: View {
         userId: 2,
         name: "김수거",
         email: "pickup_user@test.com",
-        role: "PICKUP_MANAGER",
-        affiliation: "햄햄수거업체"
+        role: "PICKUP_MANAGER"
+        //affiliation: "햄햄수거업체"
     ),
     authVM: AuthViewModel()
     )

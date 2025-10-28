@@ -43,7 +43,7 @@ class AuthViewModel: ObservableObject {
             email: email,
             password: password,
             role: role,
-            affiliation: affiliation,
+            //affiliation: affiliation,
             agreeTerms: agreeTerms
         )
         
@@ -181,7 +181,7 @@ class AuthViewModel: ObservableObject {
             userInfo = info
             role = info.role
             name = info.name
-            affiliation = info.affiliation
+            //affiliation = info.affiliation ?? ""
             
             // ✅ 사용자 정보 로드 시 userId도 저장
             UserDefaults.standard.set(info.userId, forKey: "userId")
@@ -265,7 +265,7 @@ struct SignupRequest: Codable {
     let email: String
     let password: String
     let role: String
-    let affiliation: String
+    //let affiliation: String
     let agreeTerms: Bool
 }
 

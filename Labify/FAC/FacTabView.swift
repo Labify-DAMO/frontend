@@ -45,8 +45,8 @@ struct FacTabView: View {
             userId: 3,
             name: "이시설",
             email: "facility@test.com",
-            role: "FACILITY_MANAGER",
-            affiliation: "종합관리센터"
+            role: "FACILITY_MANAGER"
+            //affiliation: "종합관리센터"
         ),
         authVM: AuthViewModel()
     )

@@ -14,7 +14,37 @@ struct UserInfo: Codable {
     let name: String
     let email: String
     let role: String
-    let affiliation: String
+    //let affiliation: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case userId, name, email, role
+    }
+    
+    // ✅ 일반 이니셜라이저 추가
+    init(userId: Int, name: String, email: String, role: String) {
+        self.userId = userId
+        self.name = name
+        self.email = email
+        self.role = role
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try container.decode(Int.self, forKey: .userId)
+        name = try container.decode(String.self, forKey: .name)
+        email = try container.decode(String.self, forKey: .email)
+        role = try container.decode(String.self, forKey: .role)
+        //affiliation = try container.decodeIfPresent(String.self, forKey: .affiliation)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(userId, forKey: .userId)
+        try container.encode(name, forKey: .name)
+        try container.encode(email, forKey: .email)
+        try container.encode(role, forKey: .role)
+        //try container.encodeIfPresent(affiliation, forKey: .affiliation)
+    }
 }
 
 struct TokenResponse: Codable {
@@ -83,88 +113,72 @@ struct LabRequestResponse: Codable {
     let status: String
 }
 
-// MARK: - ========== WASTE MODELS ==========
+// MARK: - ========== WASTE CATEGORY & TYPE MODELS ==========
 
-struct Waste: Identifiable, Codable {
+// 폐기물 카테고리 (coarse)
+struct WasteCategory: Identifiable, Codable {
     let id: Int
     let name: String
-    let weight: Double
-    let unit: String
-    let labId: Int
-    let status: String
+    let description: String?
     
     enum CodingKeys: String, CodingKey {
-        case id = "wasteId"
+        case id = "categoryId"
         case name
-        case weight
-        case unit
-        case labId
-        case status
+        case description
     }
+}
+
+// 폐기물 타입 (fine)
+struct WasteType: Identifiable, Codable {
+    let id: Int
+    let name: String
+    let categoryId: Int?
+    let categoryName: String?
+    let unit: String
+    let description: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "typeId"
+        case name
+        case categoryId
+        case categoryName
+        case unit
+        case description
+    }
+}
+
+// 단위 목록
+enum WasteUnit: String, CaseIterable, Identifiable {
+    case kg = "kg"
+    case g = "g"           // ✅ 추가
+    case liter = "L"
+    case mL = "mL"         // ✅ 추가
+    case piece = "piece"
+    
+    var id: String { rawValue }
 }
 
 // AI 분류 응답
 struct AIClassifyResponse: Codable {
     let coarse: String
     let fine: String
+    let unit: String?
     let is_bio: Bool
     let is_ocr: Bool
     let ocr_text: String?
-    
-    var displayCoarse: String {
-        switch coarse {
-        case "sharps": return "날카로운 물체"
-        case "chemicals": return "화학 물질"
-        case "biological": return "생물학적 폐기물"
-        default: return coarse
-        }
-    }
-    
-    var displayFine: String {
-        switch fine {
-        case "syringe": return "주사기"
-        case "needle": return "주사바늘"
-        case "gloves": return "장갑"
-        default: return fine
-        }
-    }
 }
 
 // 폐기물 등록 요청
-struct RegisterWasteRequest: Codable {
-    let lab_id: Int
-    let waste_type_id: Int
-    let weight: Double
-    let unit: String
-    let memo: String?
-    let created_by: Int
-}
-
-// 폐기물 등록 응답
-struct DisposalResponse: Codable {
-    let disposal_id: Int
-    let qr_code_url: String
-    let status: String
-    
-    enum CodingKeys: String, CodingKey {
-        case disposal_id
-        case qr_code_url
-        case status
-    }
-}
-
-// 폐기물 등록 요청 (상세 버전)
 struct RegisterWasteDetailRequest: Codable {
     let labId: Int
-    let wasteTypeId: Int
+    let wasteTypeName: String
     let weight: Double
     let unit: String
     let memo: String?
     let availableUntil: String
-    let createdById: Int
 }
 
-// 폐기물 등록 응답 (상세 버전)
+// 폐기물 등록 응답
 struct DisposalDetail: Codable {
     let id: Int
     let labName: String
@@ -174,10 +188,169 @@ struct DisposalDetail: Codable {
     let memo: String?
     let status: String
     let createdAt: String
-    let availableUntil: String
+    let availableUntil: String?
 }
 
-// MARK: - ========== PICKUP MODELS ==========
+// 폐기물 목록 조회 응답
+struct DisposalListResponse: Codable {
+    let totalCount: Int
+    let disposalItems: [DisposalItemData]
+}
+
+// 폐기물 목록의 개별 아이템 (Waste로 사용)
+struct DisposalItemData: Identifiable, Codable {
+    let id: Int
+    let labName: String
+    let wasteTypeName: String
+    let weight: Double
+    let unit: String
+    let memo: String?
+    let status: String
+    let createdAt: String
+    let availableUntil: String?
+    
+    // UI용 computed properties
+    var name: String { wasteTypeName }
+    var labId: Int { 0 } // TODO: API 응답에 labId가 없으면 임시값
+}
+
+// PickupRequestView에서 사용하는 Waste 타입
+typealias Waste = DisposalItemData
+
+// MARK: - ========== PICKUP REQUEST MODELS (수거 요청) ==========
+
+// 수거 요청 생성 Request
+struct CreatePickupRequest: Codable {
+    let labId: Int
+    let requesterId: Int
+    let requestDate: String  // "2025-10-24T10:00:00"
+    let disposalItemIds: [Int]
+}
+
+// 수거 요청 생성 Response
+struct CreatePickupResponse: Codable {
+    let pickupRequestId: Int
+    let labId: Int
+    let labName: String
+    let pickupId: Int
+    let collectorId: Int
+    let collectorName: String
+    let status: String
+    let requestDate: String  // "2025-10-24"
+    let createdAt: String
+}
+
+// 수거 요청 취소 Response
+struct CancelPickupResponse: Codable {
+    let pickupRequestId: Int
+    let labId: Int
+    let requestDate: String
+    let status: String
+}
+
+// 수거 요청 목록 아이템
+struct PickupRequestItem: Identifiable, Codable {
+    var id: Int { requestId }
+    let requestId: Int
+    let requestDate: String
+    let status: String
+    let disposalItems: [PickupDisposalItem]
+    
+    // UI용 computed properties
+    var displayStatus: String {
+        switch status {
+        case "REQUESTED": return "요청됨"
+        case "SCHEDULED": return "수거 예정"
+        case "COMPLETED": return "완료"
+        case "CANCELED": return "취소"
+        default: return status
+        }
+    }
+    
+    var statusColor: String {
+        switch status {
+        case "REQUESTED": return "orange"
+        case "SCHEDULED": return "blue"
+        case "COMPLETED": return "green"
+        case "CANCELED": return "gray"
+        default: return "gray"
+        }
+    }
+    
+    var totalWeight: Double {
+        disposalItems.reduce(0) { $0 + $1.weight }
+    }
+    
+    var itemCount: Int {
+        disposalItems.count
+    }
+}
+
+// 수거 요청 상세 조회 Response
+struct PickupRequestDetail: Codable {
+    let requestId: Int
+    let requestDate: String
+    let status: String
+    let disposalItems: [PickupDisposalItem]
+    
+    var displayStatus: String {
+        switch status {
+        case "REQUESTED": return "요청됨"
+        case "SCHEDULED": return "수거 예정"
+        case "COMPLETED": return "완료"
+        case "CANCELED": return "취소"
+        default: return status
+        }
+    }
+    
+    var statusColor: String {
+        switch status {
+        case "REQUESTED": return "orange"
+        case "SCHEDULED": return "blue"
+        case "COMPLETED": return "green"
+        case "CANCELED": return "gray"
+        default: return "gray"
+        }
+    }
+    
+    var totalWeight: Double {
+        disposalItems.reduce(0) { $0 + $1.weight }
+    }
+}
+
+// 수거 요청의 폐기물 아이템
+struct PickupDisposalItem: Identifiable, Codable {
+    var id: Int { disposalId }
+    let disposalId: Int
+    let wasteTypeName: String
+    let weight: Double
+    let unit: String
+}
+
+// 수거 요청 상태 필터
+enum PickupRequestStatus: String, CaseIterable {
+    case all = "전체"
+    case requested = "REQUESTED"
+    case scheduled = "SCHEDULED"
+    case completed = "COMPLETED"
+    case canceled = "CANCELED"
+    
+    var displayName: String {
+        switch self {
+        case .all: return "전체"
+        case .requested: return "요청됨"
+        case .scheduled: return "수거 예정"
+        case .completed: return "완료"
+        case .canceled: return "취소"
+        }
+    }
+    
+    var apiValue: String? {
+        self == .all ? nil : rawValue
+    }
+}
+
+// MARK: - ========== PICKUP MODELS (기존 - 수거업체용) ==========
 
 struct PickupRequest: Identifiable, Codable {
     let id: Int
@@ -193,34 +366,7 @@ struct PickupRequest: Identifiable, Codable {
     }
 }
 
-// 수거 요청 상세 조회 응답
-struct PickupRequestDetail: Codable {
-    let requestId: Int
-    let requestDate: String
-    let status: String
-    let disposalItems: [DisposalItem]
-    
-    var displayStatus: String {
-        switch status {
-        case "REQUESTED": return "요청됨"
-        case "SCHEDULED": return "수거 예정"
-        case "COMPLETED": return "수거 완료"
-        case "CANCELLED": return "취소됨"
-        default: return status
-        }
-    }
-    
-    var statusColor: String {
-        switch status {
-        case "REQUESTED": return "orange"
-        case "SCHEDULED": return "blue"
-        case "COMPLETED": return "green"
-        case "CANCELLED": return "gray"
-        default: return "gray"
-        }
-    }
-}
-
+// 기존 DisposalItem (수거업체용)
 struct DisposalItem: Identifiable, Codable {
     var id: Int { disposalId }
     let disposalId: Int
@@ -343,32 +489,8 @@ struct PickupHistoryItem: Identifiable, Codable {
 
 // MARK: - ========== FACILITY MODELS ==========
 
-//struct Facility: Identifiable, Codable {
-//    let id: Int
-//    let name: String
-//    let type: String
-//    let address: String
-//    let facilityCode: String
-//    
-//    enum CodingKeys: String, CodingKey {
-//        case id = "facilityId"
-//        case name
-//        case type
-//        case address
-//        case facilityCode
-//    }
-//}
-
-//// Models.swift (필요 시)
-//struct RegisterFacilityRequest: Codable {
-//    let name: String
-//    let type: String   // "LAB" 등
-//    let address: String
-//    let managerId: Int
-//}
-
 struct Facility: Identifiable, Codable {
-    let id: Int        // CodingKeys에서 facilityId 매핑
+    let id: Int
     let name: String
     let type: String
     let address: String
@@ -379,10 +501,6 @@ struct Facility: Identifiable, Codable {
         case name, type, address, facilityCode
     }
 }
-
-
-
-
 
 // 시설 가입 요청
 struct FacilityJoinRequest: Codable {
@@ -422,15 +540,6 @@ struct FacilityJoinRequestItem: Identifiable, Codable {
     }
 }
 
-
-
-
-
-
-// Models.swift에 추가할 모델들
-
-import Foundation
-
 // MARK: - 연구소-수거업체 관계 관련
 
 struct CreateRelationRequest: Codable {
@@ -466,13 +575,6 @@ struct FacilityRegistrationResponse: Codable {
     let address: String
     let facilityCode: String
 }
-
-
-
-
-
-
-
 
 // 연구소-수거업체 관계
 struct FacilityRelation: Identifiable, Codable {

@@ -1,17 +1,15 @@
 //
-//  WasteViewModel.swift
+//  WasteViewModel.swift (Updated with Categories & Types)
 //  Labify
-//
-//  Created by KITS on 10/15/25.
 //
 
 import Foundation
 import SwiftUI
 
-// MARK: - Waste ViewModel (LAB, FAC가 사용)
 @MainActor
 class WasteViewModel: ObservableObject {
-    @Published var wastes: [Waste] = []
+    // Note: Waste 모델이 정의되면 주석 해제하세요
+    // @Published var wastes: [Waste] = []
     @Published var isLoading = false
     @Published var showError = false
     @Published var errorMessage: String?
@@ -20,16 +18,64 @@ class WasteViewModel: ObservableObject {
     @Published var aiClassifyResult: AIClassifyResponse?
     @Published var isClassifying = false
     
+    // 카테고리 & 타입 목록
+    @Published var wasteCategories: [WasteCategory] = []
+    @Published var wasteTypes: [WasteType] = []
+    @Published var filteredWasteTypes: [WasteType] = []
+    
     private var token: String? {
         let token = UserDefaults.standard.string(forKey: "accessToken")
-        print("🔑 Token check: \(token != nil ? "존재함" : "없음")")
-        if let t = token {
-            print("🔑 Token value: \(t.prefix(20))...")
-        }
         return token
     }
     
-    // MARK: - ✅ AI 폐기물 분류 (LAB)
+    // MARK: - ✅ 폐기물 카테고리 목록 조회
+    func fetchWasteCategories() async {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            wasteCategories = try await WasteService.fetchWasteCategories(token: token)
+            print("✅ 카테고리 조회 성공: \(wasteCategories.count)개")
+        } catch {
+            handleError(error)
+        }
+    }
+    
+    // MARK: - ✅ 특정 카테고리의 폐기물 타입 조회
+    func fetchWasteTypes(categoryName: String) async {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            wasteTypes = try await WasteService.fetchWasteTypes(categoryName: categoryName, token: token)
+            filteredWasteTypes = wasteTypes
+            print("✅ '\(categoryName)' 타입 조회 성공: \(wasteTypes.count)개")
+        } catch {
+            handleError(error)
+        }
+    }
+    
+    // MARK: - ✅ 특정 카테고리의 타입 필터링 (로컬)
+    func filterWasteTypes(byCategoryName categoryName: String) {
+        if let category = wasteCategories.first(where: { $0.name == categoryName }) {
+            filteredWasteTypes = wasteTypes.filter { $0.categoryName == categoryName }
+            print("✅ 카테고리 '\(categoryName)' 필터링: \(filteredWasteTypes.count)개")
+        } else {
+            filteredWasteTypes = wasteTypes
+        }
+    }
+    
+    // MARK: - ✅ AI 폐기물 분류
     func classifyWasteWithAI(imageData: Data) async -> AIClassifyResponse? {
         print("📸 AI 분류 시작...")
         
@@ -39,7 +85,6 @@ class WasteViewModel: ObservableObject {
             return nil
         }
         
-        print("✅ 토큰 확인 완료, API 호출 시작")
         isClassifying = true
         defer { isClassifying = false }
         
@@ -49,6 +94,7 @@ class WasteViewModel: ObservableObject {
                 token: token
             )
             aiClassifyResult = result
+            
             print("✅ AI 분류 성공: \(result.coarse) - \(result.fine)")
             return result
         } catch {
@@ -58,15 +104,61 @@ class WasteViewModel: ObservableObject {
         }
     }
     
-    // MARK: - ✅ 폐기물 등록 (LAB)
+    // MARK: - ✅ 폐기물 등록
     func registerWaste(
         labId: Int,
-        wasteTypeId: Int,
+        wasteTypeName: String?,
         weight: Double,
         unit: String,
         memo: String?,
-        availableUntil: String,
-        createdById: Int
+        availableUntil: String
+    ) async -> DisposalDetail? {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return nil
+        }
+        
+        print(String(repeating: "=", count: 50))  // ✅ Swift 방식
+        print("🔐 토큰 정보:")
+        print("- Token: \(token.prefix(20))...")
+        print("- Lab ID: \(labId)")
+        print("- Waste Type: \(wasteTypeName ?? "nil")")
+        print(String(repeating: "=", count: 50))
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let request = RegisterWasteDetailRequest(
+                labId: labId,
+                wasteTypeName: wasteTypeName ?? "미지정",
+                weight: weight,
+                unit: unit,
+                memo: memo,
+                availableUntil: availableUntil
+            )
+            
+            let response = try await WasteService.registerWasteDetail(
+                request: request,
+                token: token
+            )
+            print("✅ 폐기물 등록 성공: ID=\(response.id)")
+            return response
+        } catch {
+            print("❌ 에러 상세: \(error)")
+            handleError(error)
+            return nil
+        }
+    }
+    
+    // MARK: - ✅ 폐기물 정보 수정
+    func updateWaste(
+        disposalItemId: Int,
+        weight: Double? = nil,
+        unit: String? = nil,
+        memo: String? = nil,
+        status: String? = nil,
+        availableUntil: String? = nil
     ) async -> DisposalDetail? {
         guard let token = token else {
             handleError(NetworkError.unauthorized)
@@ -77,60 +169,25 @@ class WasteViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
-            let request = RegisterWasteDetailRequest(
-                labId: labId,
-                wasteTypeId: wasteTypeId,
+            let request = UpdateWasteDetailRequest(
                 weight: weight,
                 unit: unit,
                 memo: memo,
-                availableUntil: availableUntil,
-                createdById: createdById
+                status: status,
+                availableUntil: availableUntil
             )
             
-            let response = try await WasteService.registerWasteDetail(
+            let response = try await WasteService.updateWasteDetail(
+                disposalItemId: disposalItemId,
                 request: request,
                 token: token
             )
-            print("✅ 폐기물 등록 성공: ID=\(response.id)")
+            print("✅ 폐기물 수정 성공: ID=\(response.id)")
             return response
         } catch {
             handleError(error)
             return nil
         }
-    }
-    
-    // MARK: - 폐기물 목록 조회
-    // TODO: API 개발 대기 중
-    func fetchWastes(labId: Int? = nil) async {
-        guard let token = token else {
-            handleError(NetworkError.unauthorized)
-            return
-        }
-        
-        isLoading = true
-        defer { isLoading = false }
-        
-        // 임시 목 데이터
-        wastes = []
-    }
-    
-    // MARK: - 폐기물 삭제
-    // TODO: API 개발 대기 중
-    func deleteWaste(wasteId: Int) async -> Bool {
-        guard let token = token else {
-            handleError(NetworkError.unauthorized)
-            return false
-        }
-        
-        isLoading = true
-        defer { isLoading = false }
-        
-        return false
-    }
-    
-    // MARK: - 통계 계산
-    var totalWastes: Int {
-        wastes.count
     }
     
     // MARK: - 에러 처리
@@ -142,75 +199,5 @@ class WasteViewModel: ObservableObject {
         }
         showError = true
         print("❌ WasteViewModel Error: \(errorMessage ?? "Unknown")")
-    }
-}
-
-// MARK: - Waste Service
-struct WasteService {
-    static let networkManager = NetworkManager.shared
-    
-    // MARK: - ✅ AI 폐기물 분류
-    static func classifyWaste(imageData: Data, token: String) async throws -> AIClassifyResponse {
-        // Multipart/form-data 요청 생성
-        guard let url = URL(string: networkManager.baseURLString + "/ai-predict") else {
-            print("❌ Invalid URL: \(networkManager.baseURLString)/ai-predict")
-            throw NetworkError.invalidURL
-        }
-        
-        print("📡 Request URL: \(url)")
-        print("📦 Image size: \(imageData.count) bytes")
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        
-        let boundary = UUID().uuidString
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        
-        var body = Data()
-        
-        // 이미지 파일 추가
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"waste.jpg\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-        body.append(imageData)
-        body.append("\r\n".data(using: .utf8)!)
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-        
-        request.httpBody = body
-        
-        print("📤 Sending request...")
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            print("❌ Invalid response type")
-            throw NetworkError.invalidResponse
-        }
-        
-        print("📥 Response status: \(httpResponse.statusCode)")
-        
-        if let responseString = String(data: data, encoding: .utf8) {
-            print("📄 Response body: \(responseString)")
-        }
-        
-        guard (200...299).contains(httpResponse.statusCode) else {
-            print("❌ HTTP Error: \(httpResponse.statusCode)")
-            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
-        }
-        
-        let decoder = JSONDecoder()
-        let result = try decoder.decode(AIClassifyResponse.self, from: data)
-        print("✅ Decoded successfully")
-        return result
-    }
-    
-    // MARK: - ✅ 폐기물 등록 (상세 정보 포함)
-    static func registerWasteDetail(request: RegisterWasteDetailRequest, token: String) async throws -> DisposalDetail {
-        return try await networkManager.request(
-            endpoint: "/disposals",
-            method: "POST",
-            body: request,
-            token: token
-        )
     }
 }

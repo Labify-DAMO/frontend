@@ -50,7 +50,7 @@ struct LabService {
 //        //     method: "GET",
 //        //     token: token
 //        // )
-//        
+//
 //        // 임시 목 데이터
 //        return nil
 //    }
@@ -98,6 +98,75 @@ struct LabService {
         return try await networkManager.request(
             endpoint: "/labs/requests/\(requestId)/reject",
             method: "PATCH",
+            token: token
+        )
+    }
+    
+    // MARK: - ========== 수거 요청 API ==========
+    
+    // MARK: - ✅ 수거 요청 생성
+    static func createPickupRequest(
+        labId: Int,
+        requesterId: Int,
+        requestDate: String,
+        disposalItemIds: [Int],
+        token: String
+    ) async throws -> CreatePickupResponse {
+        let request = CreatePickupRequest(
+            labId: labId,
+            requesterId: requesterId,
+            requestDate: requestDate,
+            disposalItemIds: disposalItemIds
+        )
+        return try await networkManager.request(
+            endpoint: "/pickup-requests/requests",
+            method: "POST",
+            body: request,
+            token: token
+        )
+    }
+    
+    // MARK: - ✅ 수거 요청 취소
+    static func cancelPickupRequest(
+        pickupRequestId: Int,
+        token: String
+    ) async throws -> CancelPickupResponse {
+        return try await networkManager.request(
+            endpoint: "/pickup-requests/\(pickupRequestId)/cancel",
+            method: "PATCH",
+            token: token
+        )
+    }
+    
+    // MARK: - ✅ 내 수거 요청 전체 조회
+    static func fetchMyPickupRequests(token: String) async throws -> [PickupRequestItem] {
+        return try await networkManager.request(
+            endpoint: "/pickup-requests",
+            method: "GET",
+            token: token
+        )
+    }
+    
+    // MARK: - ✅ 내 수거 요청 상태별 필터링 조회
+    static func fetchMyPickupRequestsByStatus(
+        status: String,
+        token: String
+    ) async throws -> [PickupRequestItem] {
+        return try await networkManager.request(
+            endpoint: "/pickup-requests?status=\(status)",
+            method: "GET",
+            token: token
+        )
+    }
+    
+    // MARK: - ✅ 특정 수거 요청 상세 조회
+    static func fetchPickupRequestDetail(
+        pickupRequestId: Int,
+        token: String
+    ) async throws -> PickupRequestDetail {
+        return try await networkManager.request(
+            endpoint: "/pickup-requests/\(pickupRequestId)",
+            method: "GET",
             token: token
         )
     }

@@ -90,7 +90,6 @@ enum FacService {
         return response
     }
     
-    
     // MARK: - 시설 가입 요청 관련 API
 
     static func fetchFacilityJoinRequests(token: String) async throws -> [FacilityJoinRequestItem] {
@@ -164,5 +163,26 @@ enum FacService {
             method: "DELETE",
             token: token
         )
+    }
+    
+    // MARK: - ✅ 수거업체 목록 조회 API (TODO: 백엔드 엔드포인트 확인 필요)
+    
+    /// 수거업체 목록 조회
+    /// - TODO: 실제 백엔드 API 엔드포인트 확인 필요
+    /// - 예상 엔드포인트: GET /facilities/pickup 또는 GET /facilities?type=PICKUP
+    static func fetchPickupFacilities(token: String) async throws -> [Facility] {
+        // TODO: 백엔드에 수거업체만 조회하는 API가 있는지 확인 필요
+        // 현재는 빈 배열 반환 (임시)
+        print("⚠️ TODO: 수거업체 목록 조회 API 엔드포인트 확인 필요")
+        
+        // 실제 구현 예시:
+        // let response: [Facility] = try await networkManager.request(
+        //     endpoint: "/facilities/pickup",
+        //     method: "GET",
+        //     token: token
+        // )
+        // return response
+        
+        return []
     }
 }

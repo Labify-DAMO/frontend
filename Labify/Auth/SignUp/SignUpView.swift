@@ -92,16 +92,10 @@ struct SignUpView: View {
                             onNext: { currentStep = 5 }
                         )
                     } else if currentStep == 5 {
+                        // ✅ 역할 선택 후 바로 회원가입
                         Step5RoleSelection(
                             selectedRole: $selectedRole,
                             canProceed: canProceedStep5,
-                            onNext: { currentStep = 6 }
-                        )
-                    } else if currentStep == 6 {
-                        Step6AffiliationInput(
-                            vm: vm,
-                            selectedRole: selectedRole,
-                            canProceed: canProceedStep6,
                             onNext: {
                                 Task {
                                     // 회원가입 API 호출 (인증 코드 자동 발송)
@@ -110,21 +104,20 @@ struct SignUpView: View {
                                     if success {
                                         remainingTime = 300
                                         startTimer()
-                                        currentStep = 7
+                                        currentStep = 6  // ✅ Step 7 → 6으로 변경
                                     }
                                 }
                             }
                         )
-                    } else if currentStep == 7 {
+                    } else if currentStep == 6 {  // ✅ 7 → 6
                         Step7VerificationCode(
                             vm: vm,
                             verificationCode: $verificationCode,
                             isCodeFieldFocused: $isCodeFieldFocused,
                             remainingTime: $remainingTime,
-                            canProceed: canProceedStep7,
+                            canProceed: canProceedStep6,  // ✅ 7 → 6
                             onResend: {
                                 Task {
-                                    // 재전송만 send-code 사용
                                     await vm.sendVerificationCode()
                                     remainingTime = 300
                                     startTimer()
@@ -136,17 +129,17 @@ struct SignUpView: View {
                                         let success = await vm.verifyCode(code: code)
                                         if success {
                                             timer?.invalidate()
-                                            currentStep = 8
+                                            currentStep = 7  // ✅ 8 → 7
                                         }
                                     }
                                 }
                             }
                         )
-                    } else if currentStep == 8 {
+                    } else if currentStep == 7 {  // ✅ 8 → 7
                         Step8SignupComplete(
-                            onNext: { currentStep = 9 }
+                            onNext: { currentStep = 8 }  // ✅ 9 → 8
                         )
-                    } else if currentStep == 9 {
+                    } else if currentStep == 8 {  // ✅ 9 → 8
                         Step9PermissionRequest(
                             onDismiss: { dismiss() }
                         )
@@ -179,11 +172,7 @@ struct SignUpView: View {
         selectedRole != nil
     }
     
-    private var canProceedStep6: Bool {
-        !vm.affiliation.isEmpty
-    }
-    
-    private var canProceedStep7: Bool {
+    private var canProceedStep6: Bool {  // ✅ Step7 → Step6
         verificationCode.count == 6
     }
     

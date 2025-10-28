@@ -14,6 +14,12 @@ class LabViewModel: ObservableObject {
     @Published var labs: [Lab] = []
     @Published var myLab: Lab?
     @Published var labRequests: [LabRequest] = []
+    
+    // 수거 요청 관련
+    @Published var pickupRequests: [PickupRequestItem] = []
+    @Published var selectedPickupDetail: PickupRequestDetail?
+    @Published var selectedStatusFilter: PickupRequestStatus = .all
+    
     @Published var isLoading = false
     @Published var showError = false
     @Published var errorMessage: String?
@@ -64,12 +70,11 @@ class LabViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
-            // FacService의 fetchLabs 사용
             labs = try await FacService.fetchLabs(token: token)
             print("✅ 실험실 목록 조회 성공: \(labs.count)개")
         } catch {
             handleError(error)
-            labs = [] // 에러 발생 시 빈 배열로 초기화
+            labs = []
         }
     }
     
@@ -80,16 +85,10 @@ class LabViewModel: ObservableObject {
 //            handleError(NetworkError.unauthorized)
 //            return
 //        }
-//        
+//
 //        isLoading = true
 //        defer { isLoading = false }
-//        
-//        // do {
-//        //     myLab = try await LabService.fetchMyLab(token: token)
-//        // } catch {
-//        //     handleError(error)
-//        // }
-//        
+//
 //        print("⚠️ TODO: 내 실험실 조회 API 개발 대기 중")
 //        myLab = nil
 //    }
@@ -184,9 +183,7 @@ class LabViewModel: ObservableObject {
                 token: token
             )
             
-            // 요청 목록에서 제거
             labRequests.removeAll { $0.id == requestId }
-            // 실험실 목록에 추가
             labs.append(approvedLab)
             print("✅ 실험실 개설 요청 승인 성공: \(approvedLab.name)")
         } catch {
@@ -210,11 +207,141 @@ class LabViewModel: ObservableObject {
                 token: token
             )
             
-            // 요청 목록에서 제거
             labRequests.removeAll { $0.id == requestId }
             print("✅ 실험실 개설 요청 거절 성공")
         } catch {
             handleError(error)
+        }
+    }
+    
+    // MARK: - ========== 수거 요청 관련 ==========
+    
+    // MARK: - ✅ 수거 요청 생성
+    func createPickupRequest(
+        labId: Int,
+        requestDate: String,
+        disposalItemIds: [Int]
+    ) async -> Bool {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return false
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let response = try await LabService.createPickupRequest(
+                labId: labId,
+                requesterId: 3,  // 임시로 3 사용
+                requestDate: requestDate,
+                disposalItemIds: disposalItemIds,
+                token: token
+            )
+            print("✅ 수거 요청 생성 성공: pickupRequestId=\(response.pickupRequestId), status=\(response.status)")
+            
+            // 요청 생성 후 목록 새로고침
+            await fetchMyPickupRequests()
+            return true
+        } catch {
+            handleError(error)
+            return false
+        }
+    }
+    
+    // MARK: - ✅ 수거 요청 취소
+    func cancelPickupRequest(pickupRequestId: Int) async -> Bool {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return false
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let response = try await LabService.cancelPickupRequest(
+                pickupRequestId: pickupRequestId,
+                token: token
+            )
+            print("✅ 수거 요청 취소 성공: pickupRequestId=\(response.pickupRequestId), status=\(response.status)")
+            
+            // 취소 후 목록 새로고침
+            await fetchMyPickupRequests()
+            return true
+        } catch {
+            handleError(error)
+            return false
+        }
+    }
+    
+    // MARK: - ✅ 내 수거 요청 전체 조회
+    func fetchMyPickupRequests() async {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            pickupRequests = try await LabService.fetchMyPickupRequests(token: token)
+            print("✅ 내 수거 요청 전체 조회 성공: \(pickupRequests.count)개")
+        } catch {
+            handleError(error)
+            pickupRequests = []
+        }
+    }
+    
+    // MARK: - ✅ 내 수거 요청 상태별 필터링 조회
+    func fetchMyPickupRequestsByStatus(status: PickupRequestStatus) async {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            if status == .all {
+                // 전체 조회
+                pickupRequests = try await LabService.fetchMyPickupRequests(token: token)
+                print("✅ 내 수거 요청 전체 조회 성공: \(pickupRequests.count)개")
+            } else {
+                // 상태별 조회
+                pickupRequests = try await LabService.fetchMyPickupRequestsByStatus(
+                    status: status.rawValue,
+                    token: token
+                )
+                print("✅ 내 수거 요청 필터링 조회 성공 (status=\(status.rawValue)): \(pickupRequests.count)개")
+            }
+        } catch {
+            handleError(error)
+            pickupRequests = []
+        }
+    }
+    
+    // MARK: - ✅ 특정 수거 요청 상세 조회
+    func fetchPickupRequestDetail(pickupRequestId: Int) async {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            selectedPickupDetail = try await LabService.fetchPickupRequestDetail(
+                pickupRequestId: pickupRequestId,
+                token: token
+            )
+            print("✅ 수거 요청 상세 조회 성공: requestId=\(pickupRequestId)")
+        } catch {
+            handleError(error)
+            selectedPickupDetail = nil
         }
     }
     

@@ -50,7 +50,7 @@ struct AIResultSection: View {
                 ClassificationRow(
                     icon: "square.grid.2x2",
                     title: "대분류",
-                    value: result.displayCoarse,
+                    value: result.coarse,  // ✅ displayCoarse 제거
                     color: Color(red: 30/255, green: 59/255, blue: 207/255)
                 )
                 
@@ -60,7 +60,7 @@ struct AIResultSection: View {
                 ClassificationRow(
                     icon: "list.bullet.rectangle",
                     title: "세분류",
-                    value: result.displayFine,
+                    value: result.fine,  // ✅ displayFine 제거
                     color: Color(red: 113/255, green: 100/255, blue: 230/255)
                 )
                 

@@ -15,13 +15,13 @@ struct FacManagementView: View {
     @State private var searchText = ""
     
     // 시트 상태
-    @State private var showRegisterSheet = false       // ✅ 시설 등록 시트
-    @State private var showRegisterLabSheet = false    // ✅ 실험실 등록 시트
+    @State private var showRegisterSheet = false
+    @State private var showRegisterLabSheet = false
     @State private var showInviteSheet = false
     @State private var showRelationSheet = false
     @State private var selectedLab: Lab?
     
-    @State private var requestTab = 0 // 권한 탭 내부용
+    @State private var requestTab = 0
     
     var filteredLabs: [Lab] {
         viewModel.filteredLabs(searchText: searchText)
@@ -31,11 +31,10 @@ struct FacManagementView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 
-                // ✅ 시설이 없으면: 등록 유도 화면
                 if !viewModel.hasFacility {
                     noFacilityEmptyState
                 } else {
-                    // ✅ 상단 탭
+                    // 상단 탭
                     HStack(spacing: 0) {
                         FacilityTabButton(title: "시설", isSelected: selectedTab == 0) { selectedTab = 0 }
                         FacilityTabButton(title: "수거업체", isSelected: selectedTab == 1) { selectedTab = 1 }
@@ -44,7 +43,7 @@ struct FacManagementView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
                     
-                    // ✅ 탭 콘텐츠
+                    // 탭 컨텐츠
                     if selectedTab == 0 { facilityTabContent }
                     else if selectedTab == 1 { pickupRelationTabContent }
                     else { permissionTabContent }
@@ -57,7 +56,6 @@ struct FacManagementView: View {
                         .font(.system(size: 17, weight: .semibold))
                 }
             }
-            // ✅ 시트 등록
             .sheet(isPresented: $showRegisterSheet) {
                 FacilityRegisterSheet(
                     isPresented: $showRegisterSheet,
@@ -100,7 +98,6 @@ struct FacManagementView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
             }
-            // ✅ 초기 데이터 로드
             .task {
                 await viewModel.fetchFacilityInfo()
                 if viewModel.hasFacility {
@@ -160,7 +157,14 @@ private extension FacManagementView {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 FilterButton(title: "새 실험실 등록", isSelected: false) {
-                    showRegisterLabSheet = true
+                    if let facilityId = viewModel.facilityId {
+                        print("🟢 시설 ID 확인됨: \(facilityId)")
+                        showRegisterLabSheet = true
+                    } else {
+                        print("❌ 시설 ID가 없습니다!")
+                        viewModel.errorMessage = "시설 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요."
+                        viewModel.showError = true
+                    }
                 }
                 FilterButton(title: "담당자 초대", isSelected: false, isOutlined: true) {
                     showInviteSheet = true
@@ -169,6 +173,7 @@ private extension FacManagementView {
             .padding(.horizontal)
             .padding(.top, 20)
             
+            // ✅ 통계 카드 - 실험실 수는 실제 데이터, 나머지는 하드코딩
             HStack(spacing: 12) {
                 StatCard(title: "실험실 수", value: "\(viewModel.labs.count)")
                 StatCard(title: "담당자", value: "34")
@@ -381,7 +386,7 @@ private extension FacManagementView {
     }
 }
 
-// MARK: - 공용 빈 상태 뷰 (이름 변경: EmptyStateView → FacEmptyStateView)
+// MARK: - 공용 빈 상태 뷰
 private struct FacEmptyStateView: View {
     let icon: String
     let text: String
@@ -406,8 +411,7 @@ private struct FacEmptyStateView: View {
             userId: 3,
             name: "이시설",
             email: "facility@test.com",
-            role: "FACILITY_MANAGER",
-            affiliation: "종합관리센터"
+            role: "FACILITY_MANAGER"
         )
     )
 }

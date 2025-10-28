@@ -190,7 +190,7 @@ struct WeightInputView: View {
         .navigationDestination(isPresented: $navigateToSummary) {
             WasteSummaryView(
                 weight: weight,
-                unit: unit,
+                unit: unit,  // ✅ unit 파라미터 추가
                 memo: note,
                 aiResult: aiResult,
                 manualCategory: manualCategory

@@ -56,6 +56,7 @@ struct RoleBasedInitialView: View {
             // 시설 있음 → 메인 화면
             LabTabView(userInfo: userInfo, authVM: authVM)
         } else {
+            //LabTabView(userInfo: userInfo, authVM: authVM)
             // 시설 없음 → 시설 가입 요청 화면
             InitialFacilityRequestView(userInfo: userInfo)
         }
@@ -120,8 +121,8 @@ struct RoleBasedInitialView: View {
             userId: 2,
             name: "김실험",
             email: "lab@test.com",
-            role: "LAB_MANAGER",
-            affiliation: "테스트 연구소"
+            role: "LAB_MANAGER"
+            //affiliation: "테스트 연구소"
         ),
         authVM: AuthViewModel()
     )

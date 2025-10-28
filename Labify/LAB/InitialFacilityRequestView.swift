@@ -14,6 +14,8 @@ struct InitialFacilityRequestView: View {
     @State private var isSubmitting = false
     @State private var showSuccessAlert = false
     @State private var requestSubmitted = false
+    @State private var isCheckingStatus = false
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         VStack(spacing: 0) {
@@ -38,6 +40,12 @@ struct InitialFacilityRequestView: View {
         } message: {
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
+            }
+        }
+        .onAppear {
+            // 뷰가 나타날 때 한 번 시설 정보 확인
+            Task {
+                await viewModel.fetchFacilityInfo()
             }
         }
     }
@@ -183,7 +191,7 @@ struct InitialFacilityRequestView: View {
                     }
                 }) {
                     HStack {
-                        if viewModel.isLoading {
+                        if isCheckingStatus {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
@@ -205,7 +213,7 @@ struct InitialFacilityRequestView: View {
                     )
                     .cornerRadius(16)
                 }
-                .disabled(viewModel.isLoading)
+                .disabled(isCheckingStatus)
                 
                 Text("앱을 종료하셔도 승인 시 알림이 전송됩니다")
                     .font(.system(size: 13))
@@ -241,16 +249,29 @@ struct InitialFacilityRequestView: View {
         isSubmitting = false
         
         if success {
+            // ✅ 요청 성공 시 시설 정보 다시 가져오기
+            await viewModel.fetchFacilityInfo()
             showSuccessAlert = true
         }
     }
     
     // ✅ 승인 상태 확인
     private func checkApprovalStatus() async {
+        isCheckingStatus = true
+        
         await viewModel.fetchFacilityInfo()
         
-        // 시설이 생겼으면 자동으로 메인 화면으로 이동
-        // RoleBasedInitialView가 자동으로 처리함
+        isCheckingStatus = false
+        
+        // ✅ 시설이 생겼는지 확인하고 알림 표시
+        if viewModel.hasFacility {
+            // RoleBasedInitialView가 자동으로 LabTabView로 전환함
+            print("✅ 시설 승인 완료! hasFacility: \(viewModel.hasFacility)")
+        } else {
+            // 아직 승인되지 않음
+            viewModel.errorMessage = "아직 승인되지 않았습니다.\n조금 더 기다려주세요."
+            viewModel.showError = true
+        }
     }
 }
 
@@ -260,8 +281,7 @@ struct InitialFacilityRequestView: View {
             userId: 2,
             name: "김실험",
             email: "lab@test.com",
-            role: "LAB_MANAGER",
-            affiliation: "테스트 연구소"
+            role: "LAB_MANAGER"
         )
     )
 }

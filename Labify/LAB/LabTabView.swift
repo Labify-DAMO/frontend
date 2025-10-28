@@ -46,8 +46,8 @@ struct LabTabView: View {
             userId: 2,
             name: "김실험",
             email: "facility@test.com",
-            role: "LAB_MANAGER",
-            affiliation: "종합관리센터"
+            role: "LAB_MANAGER"
+            //affiliation: "종합관리센터"
         ),
         authVM: AuthViewModel()
     )
