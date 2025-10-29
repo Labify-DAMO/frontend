@@ -14,7 +14,8 @@ struct FacTabView: View {
     
     var body: some View {
         TabView {
-            FacManagementView(userInfo: userInfo)
+            FacManagementView(userInfo: userInfo, authVM: AuthViewModel()
+            )
                 .tabItem {
                     Label("관리", systemImage: "list.bullet")
                 }
@@ -24,7 +25,7 @@ struct FacTabView: View {
                     Label("KPI", systemImage: "chart.bar.fill")
                 }
             
-            PredictionView()
+            WastePredictionView()
                 .tabItem {
                     Label("예측", systemImage: "calendar")
                 }

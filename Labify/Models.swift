@@ -351,144 +351,260 @@ enum PickupRequestStatus: String, CaseIterable {
 }
 
 // MARK: - ========== PICKUP MODELS (기존 - 수거업체용) ==========
+//
+//struct PickupRequest: Identifiable, Codable {
+//    let id: Int
+//    let labName: String
+//    let requestDate: String
+//    let status: String
+//    
+//    enum CodingKeys: String, CodingKey {
+//        case id = "requestId"
+//        case labName
+//        case requestDate
+//        case status
+//    }
+//}
+//
+//// 기존 DisposalItem (수거업체용)
+//struct DisposalItem: Identifiable, Codable {
+//    var id: Int { disposalId }
+//    let disposalId: Int
+//    let wasteTypeName: String
+//    let weight: Double
+//    let unit: String
+//}
+//
+//// QR 스캔 요청
+//struct QRScanRequest: Codable {
+//    let qr_code: String
+//    let collector_id: Int
+//}
+//
+//// QR 스캔 응답
+//struct QRScanResponse: Codable {
+//    let disposal_id: Int
+//    let status: String
+//    let processed_at: String
+//    
+//    enum CodingKeys: String, CodingKey {
+//        case disposal_id
+//        case status
+//        case processed_at
+//    }
+//}
+//
+//// 오늘 진행 현황 아이템
+//struct TodayPickupItem: Identifiable, Codable {
+//    let id: Int
+//    let labName: String
+//    let location: String
+//    let scheduledTime: String
+//    let wasteCount: Int
+//    let totalWeight: Double
+//    let status: PickupItemStatus
+//    
+//    enum CodingKeys: String, CodingKey {
+//        case id = "pickupId"
+//        case labName
+//        case location
+//        case scheduledTime
+//        case wasteCount
+//        case totalWeight
+//        case status
+//    }
+//}
+//
+//// 수거 상태
+//enum PickupItemStatus: String, Codable {
+//    case waiting = "WAITING"
+//    case inProgress = "IN_PROGRESS"
+//    case completed = "COMPLETED"
+//    
+//    var displayText: String {
+//        switch self {
+//        case .waiting: return "대기"
+//        case .inProgress: return "진행중"
+//        case .completed: return "완료"
+//        }
+//    }
+//    
+//    var color: String {
+//        switch self {
+//        case .waiting: return "gray"
+//        case .inProgress: return "black"
+//        case .completed: return "blue"
+//        }
+//    }
+//}
+//
+//// 수거 상태 업데이트 요청
+//struct UpdatePickupStatusRequest: Codable {
+//    let status: String
+//}
+//
+//// 내일 수거 목록 아이템
+//struct TomorrowPickupItem: Identifiable, Codable {
+//    let id: Int
+//    let labName: String
+//    let location: String
+//    let region: String
+//    let scheduledTime: String
+//    let wasteCount: Int
+//    let totalWeight: Double
+//    
+//    enum CodingKeys: String, CodingKey {
+//        case id = "pickupId"
+//        case labName
+//        case location
+//        case region
+//        case scheduledTime
+//        case wasteCount
+//        case totalWeight
+//    }
+//}
+//
+//// 처리 이력 아이템
+//struct PickupHistoryItem: Identifiable, Codable {
+//    let id: Int
+//    let date: String
+//    let labName: String
+//    let location: String
+//    let wasteCount: Int
+//    let totalWeight: Double
+//    let collectorName: String
+//    let region: String
+//    
+//    enum CodingKeys: String, CodingKey {
+//        case id = "pickupId"
+//        case date = "processedAt"
+//        case labName
+//        case location
+//        case wasteCount
+//        case totalWeight
+//        case collectorName
+//        case region
+//    }
+//}
 
-struct PickupRequest: Identifiable, Codable {
-    let id: Int
-    let labName: String
-    let requestDate: String
-    let status: String
-    
-    enum CodingKeys: String, CodingKey {
-        case id = "requestId"
-        case labName
-        case requestDate
-        case status
-    }
-}
 
-// 기존 DisposalItem (수거업체용)
-struct DisposalItem: Identifiable, Codable {
-    var id: Int { disposalId }
-    let disposalId: Int
-    let wasteTypeName: String
-    let weight: Double
-    let unit: String
-}
-
-// QR 스캔 요청
+// MARK: - QR 스캔 관련
 struct QRScanRequest: Codable {
-    let qr_code: String
-    let collector_id: Int
+    let code: String
 }
 
-// QR 스캔 응답
 struct QRScanResponse: Codable {
-    let disposal_id: Int
+    let disposalId: Int
     let status: String
-    let processed_at: String
-    
-    enum CodingKeys: String, CodingKey {
-        case disposal_id
-        case status
-        case processed_at
-    }
+    let processedAt: String
 }
 
-// 오늘 진행 현황 아이템
+// MARK: - 오늘 진행 현황
 struct TodayPickupItem: Identifiable, Codable {
-    let id: Int
+    let pickupId: Int
     let labName: String
-    let location: String
-    let scheduledTime: String
-    let wasteCount: Int
-    let totalWeight: Double
-    let status: PickupItemStatus
+    let labLocation: String
+    let facilityAddress: String
+    let status: String
     
-    enum CodingKeys: String, CodingKey {
-        case id = "pickupId"
-        case labName
-        case location
-        case scheduledTime
-        case wasteCount
-        case totalWeight
-        case status
-    }
-}
-
-// 수거 상태
-enum PickupItemStatus: String, Codable {
-    case waiting = "WAITING"
-    case inProgress = "IN_PROGRESS"
-    case completed = "COMPLETED"
+    var id: Int { pickupId }
     
-    var displayText: String {
-        switch self {
-        case .waiting: return "대기"
-        case .inProgress: return "진행중"
-        case .completed: return "완료"
-        }
-    }
-    
-    var color: String {
-        switch self {
-        case .waiting: return "gray"
-        case .inProgress: return "black"
-        case .completed: return "blue"
+    var pickupStatus: PickupItemStatus {
+        switch status {
+        case "REQUESTED":
+            return .requested
+        case "PROCESSING":
+            return .processing
+        case "COMPLETED":
+            return .completed
+        case "CANCELED":
+            return .canceled
+        default:
+            return .requested
         }
     }
 }
 
-// 수거 상태 업데이트 요청
+// MARK: - 내일 수거 예정
+struct TomorrowPickupItem: Identifiable, Codable {
+    let pickupId: Int
+    let labName: String
+    let labLocation: String
+    let facilityAddress: String
+    let status: String
+    
+    var id: Int { pickupId }
+}
+
+// MARK: - 처리 이력
+struct PickupHistoryItem: Identifiable, Codable {
+    let pickupId: Int
+    let labName: String
+    let labLocation: String
+    let facilityAddress: String
+    let status: String
+    
+    var id: Int { pickupId }
+    
+    // 기존 HistoryTabView와 호환성을 위한 computed properties
+    var date: String {
+        // TODO: 실제 날짜 정보가 API에 추가되면 사용
+        "2025-10-29"
+    }
+    
+    var name: String {
+        "\(labName) · \(labLocation)"
+    }
+    
+    var location: String {
+        facilityAddress
+    }
+    
+    var region: String {
+        // 주소에서 지역 추출 (예: "서울특별시 강남구" -> "서울 강남")
+        let components = facilityAddress.split(separator: " ")
+        if components.count >= 2 {
+            let city = components[0].replacingOccurrences(of: "특별시", with: "")
+                                    .replacingOccurrences(of: "광역시", with: "")
+            let district = components[1].replacingOccurrences(of: "구", with: "")
+            return "\(city) \(district)"
+        }
+        return facilityAddress
+    }
+}
+
+// MARK: - 상태 업데이트
 struct UpdatePickupStatusRequest: Codable {
     let status: String
 }
 
-// 내일 수거 목록 아이템
-struct TomorrowPickupItem: Identifiable, Codable {
-    let id: Int
-    let labName: String
-    let location: String
-    let region: String
-    let scheduledTime: String
-    let wasteCount: Int
-    let totalWeight: Double
+// MARK: - 수거 상태 Enum
+enum PickupItemStatus: String {
+    case requested = "REQUESTED"
+    case processing = "PROCESSING"
+    case completed = "COMPLETED"
+    case canceled = "CANCELED"
     
-    enum CodingKeys: String, CodingKey {
-        case id = "pickupId"
-        case labName
-        case location
-        case region
-        case scheduledTime
-        case wasteCount
-        case totalWeight
+    var displayText: String {
+        switch self {
+        case .requested: return "대기"
+        case .processing: return "진행중"
+        case .completed: return "완료"
+        case .canceled: return "취소"
+        }
     }
 }
 
-// 처리 이력 아이템
-struct PickupHistoryItem: Identifiable, Codable {
-    let id: Int
-    let date: String
-    let labName: String
-    let location: String
-    let wasteCount: Int
-    let totalWeight: Double
-    let collectorName: String
-    let region: String
-    
-    enum CodingKeys: String, CodingKey {
-        case id = "pickupId"
-        case date = "processedAt"
-        case labName
-        case location
-        case wasteCount
-        case totalWeight
-        case collectorName
-        case region
-    }
-}
 
 // MARK: - ========== FACILITY MODELS ==========
+// ✅ 시설 등록 - managerId 제거 (API 명세에 없음)
+struct RegisterFacilityRequest: Codable {
+    let name: String
+    let type: String  // "ETC", "LAB", "PICKUP"
+    let address: String
+}
 
+// ✅ 나머지는 그대로 유지
 struct Facility: Identifiable, Codable {
     let id: Int
     let name: String
@@ -502,7 +618,6 @@ struct Facility: Identifiable, Codable {
     }
 }
 
-// 시설 가입 요청
 struct FacilityJoinRequest: Codable {
     let userId: Int
     let facilityCode: String
@@ -513,15 +628,6 @@ struct FacilityJoinRequestResponse: Codable {
     let status: String
 }
 
-// 시설 등록
-struct RegisterFacilityRequest: Codable {
-    let name: String
-    let type: String
-    let address: String
-    let managerId: Int
-}
-
-// 시설 가입 요청 목록 아이템
 struct FacilityJoinRequestItem: Identifiable, Codable {
     let id: Int
     let userName: String
@@ -539,6 +645,75 @@ struct FacilityJoinRequestItem: Identifiable, Codable {
         case status
     }
 }
+
+//struct Facility: Identifiable, Codable {
+//    let id: Int
+//    let name: String
+//    let type: String
+//    let address: String
+//    let facilityCode: String
+//
+//    enum CodingKeys: String, CodingKey {
+//        case id = "facilityId"
+//        case name, type, address, facilityCode
+//    }
+//}
+
+//// 시설 가입 요청
+//struct FacilityJoinRequest: Codable {
+//    let userId: Int
+//    let facilityCode: String
+//}
+//
+//struct FacilityJoinRequestResponse: Codable {
+//    let requestId: Int
+//    let status: String
+//}
+//
+
+// Models.swift의 RegisterFacilityRequest 수정
+// Type을 ETC, LAB, PICKUP 중 하나로 제한
+
+//struct RegisterFacilityRequest: Codable {
+//    let name: String
+//    let type: String  // "ETC", "LAB", "PICKUP" 중 하나
+//    let address: String
+//    let managerId: Int
+//}
+
+// ✅ 필요시 Type enum 추가 (선택사항)
+enum FacilityType: String, Codable, CaseIterable {
+    case etc = "ETC"
+    case lab = "LAB"
+    case pickup = "PICKUP"
+    
+    var displayName: String {
+        switch self {
+        case .etc: return "기타"
+        case .lab: return "연구소"
+        case .pickup: return "수거업체"
+        }
+    }
+}
+
+// 시설 가입 요청 목록 아이템
+//struct FacilityJoinRequestItem: Identifiable, Codable {
+//    let id: Int
+//    let userName: String
+//    let userEmail: String
+//    let facilityCode: String
+//    let requestedAt: String
+//    let status: String
+//    
+//    enum CodingKeys: String, CodingKey {
+//        case id = "requestId"
+//        case userName
+//        case userEmail
+//        case facilityCode
+//        case requestedAt
+//        case status
+//    }
+//}
 
 // MARK: - 연구소-수거업체 관계 관련
 

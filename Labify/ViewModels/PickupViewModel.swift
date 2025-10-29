@@ -2,7 +2,7 @@
 //  PickupViewModel.swift
 //  Labify
 //
-//  Created by F_S on 10/15/25.
+//  Created by F_S on 10/29/25.
 //
 
 import Foundation
@@ -22,98 +22,106 @@ class PickupViewModel: ObservableObject {
     @Published var selectedRegion: String = "전체 지역"
     @Published var selectedMonth: String = "전체"
     
-    // MARK: - QR 스캔 처리
-    func scanQRCode(qrCode: String, collectorId: Int) async {
+    private var token: String? {
+        UserDefaults.standard.string(forKey: "accessToken")
+    }
+    
+    // MARK: - ✅ QR 스캔 처리
+    func scanQRCode(code: String) async -> Bool {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return false
+        }
+        
         isLoading = true
-        errorMessage = nil
+        defer { isLoading = false }
         
         do {
-            guard let token = UserDefaults.standard.string(forKey: "authToken") else {
-                throw NetworkError.unauthorized
-            }
-            
             let response = try await PickupService.scanQRCode(
-                qrCode: qrCode,
-                collectorId: collectorId,
+                code: code,
                 token: token
             )
             
-            print("✅ QR 스캔 성공: disposal_id=\(response.disposal_id)")
+            print("✅ QR 스캔 성공: disposalId=\(response.disposalId), status=\(response.status)")
             
             // 오늘 진행 현황 새로고침
             await fetchTodayPickups()
+            return true
             
         } catch {
             handleError(error)
+            return false
         }
-        
-        isLoading = false
     }
     
-    // MARK: - 오늘 진행 현황 조회
+    // MARK: - ✅ 오늘 진행 현황 조회
     func fetchTodayPickups() async {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return
+        }
+        
         isLoading = true
-        errorMessage = nil
+        defer { isLoading = false }
         
         do {
-            guard let token = UserDefaults.standard.string(forKey: "authToken") else {
-                throw NetworkError.unauthorized
-            }
-            
             todayPickups = try await PickupService.fetchTodayPickups(token: token)
             print("✅ 오늘 수거 목록 조회 성공: \(todayPickups.count)건")
             
         } catch {
             handleError(error)
+            todayPickups = []
         }
-        
-        isLoading = false
     }
     
-    // MARK: - 수거 상태 업데이트
-    func updatePickupStatus(pickupId: Int, status: PickupItemStatus) async {
+    // MARK: - ✅ 수거 상태 업데이트
+    func updatePickupStatus(pickupId: Int, status: PickupItemStatus) async -> Bool {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return false
+        }
+        
         isLoading = true
-        errorMessage = nil
+        defer { isLoading = false }
         
         do {
-            guard let token = UserDefaults.standard.string(forKey: "authToken") else {
-                throw NetworkError.unauthorized
-            }
-            
             try await PickupService.updatePickupStatus(
                 pickupId: pickupId,
                 status: status.rawValue,
                 token: token
             )
             
-            print("✅ 수거 상태 업데이트 성공: \(status.displayText)")
+            print("✅ 수거 상태 업데이트 성공: pickupId=\(pickupId), status=\(status.displayText)")
             
             // 오늘 진행 현황 새로고침
             await fetchTodayPickups()
+            return true
             
         } catch {
             handleError(error)
+            return false
         }
-        
-        isLoading = false
     }
     
-    // MARK: - 내일 수거 목록 조회
+    // MARK: - ✅ 내일 수거 목록 조회
     func fetchTomorrowPickups(region: String? = nil) async {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return
+        }
+        
         isLoading = true
-        errorMessage = nil
+        defer { isLoading = false }
         
         do {
-            guard let token = UserDefaults.standard.string(forKey: "authToken") else {
-                throw NetworkError.unauthorized
-            }
-            
             if let region = region, region != "전체 지역" {
+                // 지역별 조회 (아직 API 미구현)
                 tomorrowPickups = try await PickupService.fetchTomorrowPickups(
                     region: region,
                     token: token
                 )
             } else {
+                // 전체 조회
                 tomorrowPickups = try await PickupService.fetchTomorrowPickups(token: token)
             }
             
@@ -121,35 +129,34 @@ class PickupViewModel: ObservableObject {
             
         } catch {
             handleError(error)
+            tomorrowPickups = []
         }
-        
-        isLoading = false
     }
     
-    // MARK: - 처리 이력 조회
+    // MARK: - ✅ 처리 이력 조회
     func fetchPickupHistory() async {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return
+        }
+        
         isLoading = true
-        errorMessage = nil
+        defer { isLoading = false }
         
         do {
-            guard let token = UserDefaults.standard.string(forKey: "authToken") else {
-                throw NetworkError.unauthorized
-            }
-            
             pickupHistory = try await PickupService.fetchPickupHistory(token: token)
             print("✅ 처리 이력 조회 성공: \(pickupHistory.count)건")
             
         } catch {
             handleError(error)
+            pickupHistory = []
         }
-        
-        isLoading = false
     }
     
     // MARK: - 필터링된 이력
     var filteredHistory: [PickupHistoryItem] {
         pickupHistory.filter { item in
-            let regionMatch = selectedRegion == "전체 지역" || item.region.contains(selectedRegion)
+            let regionMatch = selectedRegion == "전체 지역" || item.region.contains(selectedRegion.replacingOccurrences(of: "서울 ", with: ""))
             
             // 월 필터링 (날짜 문자열에서 월 추출)
             let monthMatch: Bool
@@ -175,17 +182,17 @@ class PickupViewModel: ObservableObject {
         guard let status = status else {
             return todayPickups
         }
-        return todayPickups.filter { $0.status == status }
+        return todayPickups.filter { $0.pickupStatus == status }
     }
     
     // MARK: - Error Handling
     private func handleError(_ error: Error) {
         if let networkError = error as? NetworkError {
-            errorMessage = networkError.errorDescription
+            errorMessage = networkError.localizedDescription
         } else {
             errorMessage = error.localizedDescription
         }
         showError = true
-        print("❌ Error: \(errorMessage ?? "Unknown error")")
+        print("❌ PickupViewModel Error: \(errorMessage ?? "Unknown")")
     }
 }

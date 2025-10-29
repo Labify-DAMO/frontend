@@ -2,7 +2,7 @@
 //  TodayProgressView.swift
 //  Labify
 //
-//  Created by F_s on 9/29/25.
+//  Created by F_s on 10/29/25.
 //
 
 import SwiftUI
@@ -14,9 +14,9 @@ struct TodayProgressView: View {
     var filteredItems: [TodayPickupItem] {
         switch selectedTab {
         case 1:
-            return viewModel.filteredTodayPickups(by: .waiting)
+            return viewModel.filteredTodayPickups(by: .requested)
         case 2:
-            return viewModel.filteredTodayPickups(by: .inProgress)
+            return viewModel.filteredTodayPickups(by: .processing)
         case 3:
             return viewModel.filteredTodayPickups(by: .completed)
         default:
@@ -68,7 +68,7 @@ struct TodayProgressView: View {
                                     onStatusChange: { newStatus in
                                         Task {
                                             await viewModel.updatePickupStatus(
-                                                pickupId: item.id,
+                                                pickupId: item.pickupId,
                                                 status: newStatus
                                             )
                                         }
@@ -153,11 +153,11 @@ struct TodayPickupItemRow: View {
                 Text(item.labName)
                     .font(.system(size: 17, weight: .semibold))
                 
-                Text(item.location)
+                Text(item.labLocation)
                     .font(.system(size: 15))
                     .foregroundColor(.gray)
                 
-                Text("\(item.scheduledTime) · \(item.wasteCount)건 (\(String(format: "%.1f", item.totalWeight))kg)")
+                Text(item.facilityAddress)
                     .font(.system(size: 14))
                     .foregroundColor(.gray)
             }
@@ -179,17 +179,20 @@ struct TodayPickupItemRow: View {
     var statusButton: some View {
         Menu {
             Button("대기") {
-                onStatusChange(.waiting)
+                onStatusChange(.requested)
             }
             Button("진행중") {
-                onStatusChange(.inProgress)
+                onStatusChange(.processing)
             }
             Button("완료") {
                 onStatusChange(.completed)
             }
+            Button("취소") {
+                onStatusChange(.canceled)
+            }
         } label: {
             HStack(spacing: 4) {
-                Text(item.status.displayText)
+                Text(item.pickupStatus.displayText)
                     .font(.system(size: 14, weight: .medium))
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10))
@@ -203,18 +206,20 @@ struct TodayPickupItemRow: View {
     }
     
     private var statusColor: Color {
-        switch item.status {
-        case .waiting: return .gray
-        case .inProgress: return .white
+        switch item.pickupStatus {
+        case .requested: return .gray
+        case .processing: return .white
         case .completed: return .white
+        case .canceled: return .gray
         }
     }
     
     private var statusBackground: Color {
-        switch item.status {
-        case .waiting: return Color.gray.opacity(0.2)
-        case .inProgress: return .black
+        switch item.pickupStatus {
+        case .requested: return Color.gray.opacity(0.2)
+        case .processing: return .black
         case .completed: return .blue
+        case .canceled: return Color.red.opacity(0.7)
         }
     }
 }

@@ -7,95 +7,6 @@
 
 import SwiftUI
 
-// MARK: - Weight Editor Sheet
-struct WeightEditorSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var weight: Double
-    @Binding var unit: String
-    @State private var tempWeight: String
-    
-    init(weight: Binding<Double>, unit: Binding<String>) {
-        self._weight = weight
-        self._unit = unit
-        self._tempWeight = State(initialValue: String(format: "%.1f", weight.wrappedValue))
-    }
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                VStack(spacing: 16) {
-                    Text("무게 입력")
-                        .font(.system(size: 20, weight: .bold))
-                    
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        TextField("0.0", text: $tempWeight)
-                            .font(.system(size: 48, weight: .medium))
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: 200)
-                        
-                        Text(unit)
-                            .font(.system(size: 24, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.vertical, 20)
-                }
-                
-                // 빠른 선택
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("빠른 입력")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.secondary)
-                    
-                    HStack(spacing: 12) {
-                        QuickAddButton(value: 0.5, tempWeight: $tempWeight)
-                        QuickAddButton(value: 1.0, tempWeight: $tempWeight)
-                        QuickAddButton(value: 2.0, tempWeight: $tempWeight)
-                    }
-                }
-                .padding(.horizontal, 20)
-                
-                Spacer()
-                
-                Button(action: {
-                    if let newWeight = Double(tempWeight), newWeight > 0 {
-                        weight = newWeight
-                        dismiss()
-                    }
-                }) {
-                    Text("확인")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                                         Color(red: 113/255, green: 100/255, blue: 230/255)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(12)
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
-            }
-            .padding(.top, 20)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
-    }
-}
-
 // MARK: - Lab Selector Bottom Sheet
 struct LabSelectorBottomSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -166,40 +77,15 @@ struct DatePickerSheet: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                DatePicker(
-                    "보관 기한",
-                    selection: $tempDate,
-                    in: Date().addingTimeInterval(-86400)...,
-                    displayedComponents: .date
-                )
-                .datePickerStyle(.graphical)
-                .tint(Color(red: 30/255, green: 59/255, blue: 207/255))
-                .padding(20)
-                
-                Spacer()
-                
-                Button(action: {
-                    selectedDate = tempDate
-                    dismiss()
-                }) {
-                    Text("확인")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                                         Color(red: 113/255, green: 100/255, blue: 230/255)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(12)
-                }
-                .padding(20)
-            }
+            DatePicker(
+                "보관 기한",
+                selection: $tempDate,
+                in: Date()...,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.graphical)
+            .tint(Color(red: 30/255, green: 59/255, blue: 207/255))
+            .padding(20)
             .navigationTitle("보관 기한 선택")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -208,21 +94,21 @@ struct DatePickerSheet: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("확인") {
+                        selectedDate = tempDate
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.height(450)])
         .presentationDragIndicator(.visible)
     }
 }
 
 // MARK: - Preview
-#Preview("Weight Editor") {
-    WeightEditorSheet(
-        weight: .constant(2.5),
-        unit: .constant("kg")
-    )
-}
-
 #Preview("Lab Selector") {
     LabSelectorBottomSheet(
         labs: [

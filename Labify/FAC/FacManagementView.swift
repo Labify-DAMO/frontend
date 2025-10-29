@@ -9,6 +9,7 @@ import SwiftUI
 
 struct FacManagementView: View {
     let userInfo: UserInfo
+    @ObservedObject var authVM: AuthViewModel
     @StateObject private var viewModel = FacViewModel()
     
     @State private var selectedTab = 0
@@ -18,7 +19,6 @@ struct FacManagementView: View {
     @State private var showRegisterSheet = false
     @State private var showRegisterLabSheet = false
     @State private var showInviteSheet = false
-    @State private var showRelationSheet = false
     @State private var selectedLab: Lab?
     
     @State private var requestTab = 0
@@ -34,18 +34,16 @@ struct FacManagementView: View {
                 if !viewModel.hasFacility {
                     noFacilityEmptyState
                 } else {
-                    // 상단 탭
+                    // 상단 탭 (수거업체 탭 제거)
                     HStack(spacing: 0) {
                         FacilityTabButton(title: "시설", isSelected: selectedTab == 0) { selectedTab = 0 }
-                        FacilityTabButton(title: "수거업체", isSelected: selectedTab == 1) { selectedTab = 1 }
-                        FacilityTabButton(title: "권한", isSelected: selectedTab == 2) { selectedTab = 2 }
+                        FacilityTabButton(title: "권한", isSelected: selectedTab == 1) { selectedTab = 1 }
                     }
                     .padding(.horizontal)
                     .padding(.top, 8)
                     
                     // 탭 컨텐츠
                     if selectedTab == 0 { facilityTabContent }
-                    else if selectedTab == 1 { pickupRelationTabContent }
                     else { permissionTabContent }
                 }
             }
@@ -57,10 +55,14 @@ struct FacManagementView: View {
                 }
             }
             .sheet(isPresented: $showRegisterSheet) {
-                FacilityRegisterSheet(
-                    isPresented: $showRegisterSheet,
-                    viewModel: viewModel,
-                    userInfo: userInfo
+                FacilityRegisterView(
+                    userInfo: UserInfo(
+                    userId: 1,
+                    name: "테스트",
+                    email: "test@test.com",
+                    role: "FACILITY_MANAGER"
+                ),
+                authVM: AuthViewModel()
                 )
             }
             .sheet(isPresented: $showRegisterLabSheet) {
@@ -76,12 +78,6 @@ struct FacManagementView: View {
             }
             .sheet(isPresented: $showInviteSheet) {
                 InviteManagerSheet(isPresented: $showInviteSheet)
-            }
-            .sheet(isPresented: $showRelationSheet) {
-                AddPickupRelationSheet(
-                    isPresented: $showRelationSheet,
-                    viewModel: viewModel
-                )
             }
             .sheet(item: $selectedLab) { lab in
                 EditLabSheet(
@@ -104,8 +100,6 @@ struct FacManagementView: View {
                     await viewModel.fetchLabs()
                     await viewModel.fetchLabRequests()
                     await viewModel.fetchFacilityJoinRequests()
-                    await viewModel.fetchFacilityRelations()
-                    await viewModel.fetchPickupFacilities()
                 }
             }
         }
@@ -155,19 +149,42 @@ private extension FacManagementView {
 private extension FacManagementView {
     var facilityTabContent: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                FilterButton(title: "새 실험실 등록", isSelected: false) {
-                    if let facilityId = viewModel.facilityId {
-                        print("🟢 시설 ID 확인됨: \(facilityId)")
-                        showRegisterLabSheet = true
-                    } else {
-                        print("❌ 시설 ID가 없습니다!")
-                        viewModel.errorMessage = "시설 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요."
-                        viewModel.showError = true
+            // 버튼 그룹 (3개)
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    FilterButton(title: "새 실험실 등록", isSelected: false) {
+                        if let facilityId = viewModel.facilityId {
+                            print("🟢 시설 ID 확인됨: \(facilityId)")
+                            showRegisterLabSheet = true
+                        } else {
+                            print("❌ 시설 ID가 없습니다!")
+                            viewModel.errorMessage = "시설 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요."
+                            viewModel.showError = true
+                        }
+                    }
+                    FilterButton(title: "담당자 초대", isSelected: false, isOutlined: true) {
+                        showInviteSheet = true
                     }
                 }
-                FilterButton(title: "담당자 초대", isSelected: false, isOutlined: true) {
-                    showInviteSheet = true
+                
+                NavigationLink(destination: PickupFacilitySearchView(viewModel: viewModel)) {
+                    HStack {
+                        Spacer()
+                        Text("수거업체 관리")
+                            .font(.system(size: 15, weight: .semibold))
+                        Spacer()
+                    }
+                    .frame(height: 44)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
+                                     Color(red: 113/255, green: 100/255, blue: 230/255)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
                 }
             }
             .padding(.horizontal)
@@ -223,71 +240,6 @@ private extension FacManagementView {
                     }
                     .padding(.horizontal)
                     .padding(.top, 16)
-                    .padding(.bottom, 100)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - 수거업체 탭
-private extension FacManagementView {
-    var pickupRelationTabContent: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Spacer()
-                Button(action: { showRelationSheet = true }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus.circle.fill")
-                        Text("수거업체 연결")
-                    }
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(
-                        LinearGradient(
-                            colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                                     Color(red: 113/255, green: 100/255, blue: 230/255)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .cornerRadius(20)
-                }
-            }
-            .padding(.horizontal)
-            .padding(.top, 20)
-            
-            if viewModel.isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.facilityRelations.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "truck.box")
-                        .font(.system(size: 48))
-                        .foregroundColor(.gray.opacity(0.5))
-                    Text("연결된 수거업체가 없습니다")
-                        .font(.system(size: 16))
-                        .foregroundColor(.gray)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        ForEach(viewModel.facilityRelations) { relation in
-                            PickupRelationCard(
-                                relation: relation,
-                                onDelete: {
-                                    Task {
-                                        await viewModel.deleteFacilityRelation(relationshipId: relation.id)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 20)
                     .padding(.bottom, 100)
                 }
             }
@@ -412,6 +364,7 @@ private struct FacEmptyStateView: View {
             name: "이시설",
             email: "facility@test.com",
             role: "FACILITY_MANAGER"
-        )
+        ),
+        authVM: AuthViewModel()
     )
 }

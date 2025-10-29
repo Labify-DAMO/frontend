@@ -10,31 +10,38 @@ import SwiftUI
 
 @MainActor
 final class FacViewModel: ObservableObject {
-    
-    @Published var isLoading = false
-    @Published var showError = false
-    @Published var errorMessage: String?
 
+    // MARK: - Published Properties
+    
     // 시설/연구실/관계
     @Published var facilityInfo: Facility?
     @Published var facilityId: Int?
+    @Published var hasFacility = false
+    
+    @Published var isLoading = false
+    @Published var errorMessage = ""
+    @Published var showError = false
+
     @Published var facilityJoinRequests: [FacilityJoinRequestItem] = []
     @Published var labs: [Lab] = []
     @Published var labRequests: [LabRequest] = []
     @Published var facilityRelations: [FacilityRelation] = []
     @Published var pickupFacilities: [Facility] = []
 
-    // 최초 진입 시 시설 유무
-    var hasFacility: Bool { facilityId != nil }
-
-    // ✅ 토큰 읽기 통일
-    private var token: String {
-        UserDefaults.standard.string(forKey: "accessToken") ?? ""
+    // ✅ 가입 요청 결과
+    @Published var joinRequestId: Int?
+    
+    // MARK: - Token
+    
+    private var token: String? {
+        UserDefaults.standard.string(forKey: "accessToken")
     }
-
+    
+    // MARK: - 시설 관련 함수
+    
     /// ✅ 내 시설 정보(배정된 1개)를 읽어와 facilityId를 세팅
     func fetchFacilityInfo() async {
-        guard !token.isEmpty else {
+        guard let token = token, !token.isEmpty else {
             print("❌ 토큰이 없습니다.")
             return
         }
@@ -47,6 +54,7 @@ final class FacViewModel: ObservableObject {
             let facility = try await FacService.fetchFacilities(token: token)
             facilityInfo = facility
             facilityId = facility.id
+            hasFacility = true
             print("✅ 시설 정보 로드 성공: \(facility.name) (ID: \(facility.id))")
         } catch {
             print("⚠️ 시설 정보 조회 중 에러 발생: \(error)")
@@ -59,6 +67,7 @@ final class FacViewModel: ObservableObject {
                         print("⚠️ 아직 소속된 시설이 없습니다. (Status: \(statusCode))")
                         facilityInfo = nil
                         facilityId = nil
+                        hasFacility = false
                     } else {
                         errorMessage = "시설 정보를 불러올 수 없습니다. (\(statusCode))"
                         showError = true
@@ -68,6 +77,7 @@ final class FacViewModel: ObservableObject {
                     print("⚠️ 시설 데이터가 없습니다.")
                     facilityInfo = nil
                     facilityId = nil
+                    hasFacility = false
                 case .decodingError:
                     print("❌ 데이터 파싱 실패")
                     errorMessage = "시설 정보 형식이 올바르지 않습니다."
@@ -85,12 +95,10 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    /// ✅ 시설 등록 (중복 방지)
-    func registerFacility(name: String, type: String, address: String, managerId: Int) async -> Bool {
-        guard !token.isEmpty else { return false }
-        
-        if hasFacility {
-            errorMessage = "이미 등록된 시설이 있습니다. 한 사용자는 하나의 시설에만 소속될 수 있습니다."
+    /// ✅ 시설 등록
+    func registerFacility(name: String, type: String, address: String) async -> Bool {
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
             showError = true
             return false
         }
@@ -102,30 +110,147 @@ final class FacViewModel: ObservableObject {
             let req = RegisterFacilityRequest(
                 name: name,
                 type: type,
-                address: address,
-                managerId: managerId
+                address: address
             )
             let created = try await FacService.registerFacility(request: req, token: token)
             
             self.facilityInfo = created
             self.facilityId = created.id
+            self.hasFacility = true
             
-            print("✅ 시설 등록 성공: \(created.name) (ID: \(created.id))")
+            print("✅ 시설 등록 성공: \(created.name) (ID: \(created.id), Code: \(created.facilityCode))")
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.errorMessage = "시설 등록 실패: \(error.localizedDescription)"
             self.showError = true
             print("❌ 시설 등록 실패: \(error)")
             return false
         }
     }
     
-    // MARK: - 실험실 목록 조회
-    func fetchLabs() async {
-        guard !token.isEmpty else { return }
+    /// ✅ 시설 가입 요청
+    func requestFacilityJoin(userId: Int, facilityCode: String) async -> Bool {
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return false
+        }
         
         isLoading = true
-        errorMessage = nil
+        defer { isLoading = false }
+        
+        do {
+            let response = try await FacService.requestFacilityJoin(
+                userId: userId,
+                facilityCode: facilityCode,
+                token: token
+            )
+            
+            self.joinRequestId = response.requestId
+            
+            print("✅ 시설 가입 요청 성공: requestId=\(response.requestId), status=\(response.status)")
+            return true
+        } catch {
+            self.errorMessage = "시설 가입 요청 실패: \(error.localizedDescription)"
+            self.showError = true
+            print("❌ 시설 가입 요청 실패: \(error)")
+            return false
+        }
+    }
+    
+    /// ✅ 시설 가입 요청 목록 조회
+    func fetchFacilityJoinRequests() async {
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return
+        }
+        
+        isLoading = true
+        errorMessage = ""
+        
+        do {
+            facilityJoinRequests = try await FacService.fetchFacilityJoinRequests(token: token)
+            print("✅ 시설 가입 요청 목록 불러오기 성공: \(facilityJoinRequests.count)건")
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+            print("❌ Failed to fetch facility join requests: \(error)")
+        }
+        
+        isLoading = false
+    }
+    
+    /// ✅ 시설 가입 요청 수락
+    func confirmFacilityJoinRequest(requestId: Int) async -> Bool {
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return false
+        }
+        
+        isLoading = true
+        errorMessage = ""
+        
+        do {
+            let response = try await FacService.confirmFacilityJoinRequest(
+                requestId: requestId,
+                token: token
+            )
+            facilityJoinRequests.removeAll { $0.id == requestId }
+            print("✅ Facility join request confirmed: \(response)")
+            isLoading = false
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+            print("❌ Failed to confirm facility join request: \(error)")
+            isLoading = false
+            return false
+        }
+    }
+
+    /// ✅ 시설 가입 요청 거절
+    func rejectFacilityJoinRequest(requestId: Int) async -> Bool {
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return false
+        }
+        
+        isLoading = true
+        errorMessage = ""
+        
+        do {
+            let response = try await FacService.rejectFacilityJoinRequest(
+                requestId: requestId,
+                token: token
+            )
+            facilityJoinRequests.removeAll { $0.id == requestId }
+            print("✅ Facility join request rejected: \(response)")
+            isLoading = false
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+            print("❌ Failed to reject facility join request: \(error)")
+            isLoading = false
+            return false
+        }
+    }
+    
+    // MARK: - 실험실 관련 함수
+    
+    /// 실험실 목록 조회
+    func fetchLabs() async {
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return
+        }
+        
+        isLoading = true
+        errorMessage = ""
         
         do {
             labs = try await FacService.fetchLabs(token: token)
@@ -139,12 +264,16 @@ final class FacViewModel: ObservableObject {
         isLoading = false
     }
     
-    // MARK: - 실험실 등록
+    /// 실험실 등록
     func registerLab(name: String, location: String, facilityId: Int) async -> Bool {
-        guard !token.isEmpty else { return false }
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return false
+        }
         
         isLoading = true
-        errorMessage = nil
+        errorMessage = ""
         
         do {
             let request = RegisterLabRequest(
@@ -166,12 +295,16 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 실험실 정보 수정
+    /// 실험실 정보 수정
     func updateLab(labId: Int, name: String, location: String) async -> Bool {
-        guard !token.isEmpty else { return false }
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return false
+        }
         
         isLoading = true
-        errorMessage = nil
+        errorMessage = ""
         
         do {
             let request = UpdateLabRequest(name: name, location: location)
@@ -196,12 +329,16 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 실험실 개설 요청 목록 조회
+    /// 실험실 개설 요청 목록 조회
     func fetchLabRequests() async {
-        guard !token.isEmpty else { return }
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return
+        }
         
         isLoading = true
-        errorMessage = nil
+        errorMessage = ""
         
         do {
             labRequests = try await FacService.fetchLabRequests(token: token)
@@ -215,12 +352,16 @@ final class FacViewModel: ObservableObject {
         isLoading = false
     }
     
-    // MARK: - 실험실 개설 요청 승인
+    /// 실험실 개설 요청 승인
     func confirmLabRequest(requestId: Int) async -> Bool {
-        guard !token.isEmpty else { return false }
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return false
+        }
         
         isLoading = true
-        errorMessage = nil
+        errorMessage = ""
         
         do {
             let newLab = try await FacService.confirmLabRequest(requestId: requestId, token: token)
@@ -238,12 +379,16 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 실험실 개설 요청 거절
+    /// 실험실 개설 요청 거절
     func rejectLabRequest(requestId: Int) async -> Bool {
-        guard !token.isEmpty else { return false }
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return false
+        }
         
         isLoading = true
-        errorMessage = nil
+        errorMessage = ""
         
         do {
             _ = try await FacService.rejectLabRequest(requestId: requestId, token: token)
@@ -260,7 +405,7 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 검색 필터링
+    /// 검색 필터링
     func filteredLabs(searchText: String) -> [Lab] {
         if searchText.isEmpty {
             return labs
@@ -271,131 +416,72 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 시설 가입 요청
-    func requestFacilityJoin(userId: Int, facilityCode: String) async -> Bool {
-        guard !token.isEmpty else { return false }
-        
-        if hasFacility {
-            errorMessage = "이미 소속된 시설이 있습니다. 한 사용자는 하나의 시설에만 소속될 수 있습니다."
+    // MARK: - 시설 관계 관련 함수
+    
+    /// 시설 코드로 수거업체 조회
+    @Published var searchedPickupFacility: Facility?
+
+    func searchFacilityByCode(facilityCode: String) async -> Bool {
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
             showError = true
             return false
         }
         
         isLoading = true
-        errorMessage = nil
+        errorMessage = ""
         
         do {
-            let response = try await FacService.requestFacilityJoin(
-                userId: userId,
+            searchedPickupFacility = try await FacService.searchFacilityByCode(
                 facilityCode: facilityCode,
                 token: token
             )
-            print("✅ 시설 가입 요청 성공: requestId=\(response.requestId), status=\(response.status)")
+            print("✅ 수거업체 조회 성공: \(searchedPickupFacility?.name ?? "")")
             isLoading = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "시설 코드를 찾을 수 없습니다."
             showError = true
-            print("❌ Failed to request facility join: \(error)")
+            print("❌ Failed to search facility: \(error)")
             isLoading = false
             return false
         }
     }
     
-    // MARK: - 시설 가입 요청 목록 조회
-    func fetchFacilityJoinRequests() async {
-        guard !token.isEmpty else { return }
-        
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            facilityJoinRequests = try await FacService.fetchFacilityJoinRequests(token: token)
-            print("✅ 시설 가입 요청 목록 불러오기 성공: \(facilityJoinRequests.count)건")
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-            print("❌ Failed to fetch facility join requests: \(error)")
-        }
-        
-        isLoading = false
-    }
-    
-    // MARK: - 시설 가입 요청 수락
-    func confirmFacilityJoinRequest(requestId: Int) async -> Bool {
-        guard !token.isEmpty else { return false }
-        
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            let response = try await FacService.confirmFacilityJoinRequest(
-                requestId: requestId,
-                token: token
-            )
-            facilityJoinRequests.removeAll { $0.id == requestId }
-            print("✅ Facility join request confirmed: \(response)")
-            isLoading = false
-            return true
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-            print("❌ Failed to confirm facility join request: \(error)")
-            isLoading = false
-            return false
-        }
-    }
 
-    // MARK: - 시설 가입 요청 거절
-    func rejectFacilityJoinRequest(requestId: Int) async -> Bool {
-        guard !token.isEmpty else { return false }
-        
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            let response = try await FacService.rejectFacilityJoinRequest(
-                requestId: requestId,
-                token: token
-            )
-            facilityJoinRequests.removeAll { $0.id == requestId }
-            print("✅ Facility join request rejected: \(response)")
-            isLoading = false
-            return true
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-            print("❌ Failed to reject facility join request: \(error)")
-            isLoading = false
-            return false
-        }
-    }
-
-    // MARK: - 연구소-수거업체 관계 목록
-    func fetchFacilityRelations() async {
-        guard !token.isEmpty else { return }
-        
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            facilityRelations = try await FacService.fetchFacilityRelations(token: token)
-            print("✅ 시설 관계 목록 조회 성공: \(facilityRelations.count)건")
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-            print("❌ Failed to fetch facility relations: \(error)")
-        }
-        
-        isLoading = false
-    }
+    /// 연구소-수거업체 관계 목록
+//    func fetchFacilityRelations() async {
+//        guard let token = token, !token.isEmpty else {
+//            errorMessage = "인증 토큰이 없습니다."
+//            showError = true
+//            return
+//        }
+//        
+//        isLoading = true
+//        errorMessage = ""
+//        
+//        do {
+//            facilityRelations = try await FacService.fetchFacilityRelations(token: token)
+//            print("✅ 시설 관계 목록 조회 성공: \(facilityRelations.count)건")
+//        } catch {
+//            errorMessage = error.localizedDescription
+//            showError = true
+//            print("❌ Failed to fetch facility relations: \(error)")
+//        }
+//        
+//        isLoading = false
+//    }
     
-    // MARK: - 연구소-수거업체 관계 생성
+    /// 연구소-수거업체 관계 생성
     func createFacilityRelation(labFacilityId: Int, pickupFacilityId: Int) async -> Bool {
-        guard !token.isEmpty else { return false }
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return false
+        }
         
         isLoading = true
-        errorMessage = nil
+        errorMessage = ""
         
         do {
             let request = CreateRelationRequest(
@@ -407,7 +493,7 @@ final class FacViewModel: ObservableObject {
                 token: token
             )
             
-            await fetchFacilityRelations()
+           // await fetchFacilityRelations()
             
             print("✅ Facility relation created: \(newRelation)")
             isLoading = false
@@ -421,12 +507,16 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 연구소-수거업체 관계 삭제
+    /// 연구소-수거업체 관계 삭제
     func deleteFacilityRelation(relationshipId: Int) async -> Bool {
-        guard !token.isEmpty else { return false }
+        guard let token = token, !token.isEmpty else {
+            errorMessage = "인증 토큰이 없습니다."
+            showError = true
+            return false
+        }
         
         isLoading = true
-        errorMessage = nil
+        errorMessage = ""
         
         do {
             try await FacService.deleteFacilityRelation(
@@ -446,24 +536,26 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    // MARK: - ✅ 수거업체 목록 조회 (TODO: 백엔드 API 확인 필요)
-    func fetchPickupFacilities() async {
-        guard !token.isEmpty else { return }
-        
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            // TODO: 실제 수거업체 목록 조회 API가 필요합니다
-            // 예: GET /facilities/pickup 또는 GET /facilities?type=PICKUP
-            pickupFacilities = try await FacService.fetchPickupFacilities(token: token)
-            print("✅ 수거업체 목록 조회 성공: \(pickupFacilities.count)개")
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-            print("❌ Failed to fetch pickup facilities: \(error)")
-        }
-        
-        isLoading = false
-    }
+//    /// 수거업체 목록 조회
+//    func fetchPickupFacilities() async {
+//        guard let token = token, !token.isEmpty else {
+//            errorMessage = "인증 토큰이 없습니다."
+//            showError = true
+//            return
+//        }
+//        
+//        isLoading = true
+//        errorMessage = ""
+//        
+//        do {
+//            pickupFacilities = try await FacService.fetchPickupFacilities(token: token)
+//            print("✅ 수거업체 목록 조회 성공: \(pickupFacilities.count)개")
+//        } catch {
+//            errorMessage = error.localizedDescription
+//            showError = true
+//            print("❌ Failed to fetch pickup facilities: \(error)")
+//        }
+//        
+//        isLoading = false
+//    }
 }
