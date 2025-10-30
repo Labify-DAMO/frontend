@@ -14,6 +14,9 @@ class PickupViewModel: ObservableObject {
     @Published var tomorrowPickups: [TomorrowPickupItem] = []
     @Published var pickupHistory: [PickupHistoryItem] = []
     
+    // QR 스캔 결과
+    @Published var scanResult: QRScanResponse?
+    
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showError = false
@@ -26,7 +29,7 @@ class PickupViewModel: ObservableObject {
         UserDefaults.standard.string(forKey: "accessToken")
     }
     
-    // MARK: - ✅ QR 스캔 처리
+    // MARK: - ✅ QR 스캔 처리 (문자열 방식 - 카메라 스캔)
     func scanQRCode(code: String) async -> Bool {
         guard let token = token else {
             handleError(NetworkError.unauthorized)
@@ -44,6 +47,8 @@ class PickupViewModel: ObservableObject {
             
             print("✅ QR 스캔 성공: disposalId=\(response.disposalId), status=\(response.status)")
             
+            scanResult = response
+            
             // 오늘 진행 현황 새로고침
             await fetchTodayPickups()
             return true
@@ -52,6 +57,41 @@ class PickupViewModel: ObservableObject {
             handleError(error)
             return false
         }
+    }
+    
+    // MARK: - ✅ QR 스캔 처리 (이미지 업로드 방식 - 갤러리 선택)
+    func scanQRCode(imageData: Data) async -> Bool {
+        guard let token = token else {
+            handleError(NetworkError.unauthorized)
+            return false
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let response = try await PickupService.scanQRCode(
+                imageData: imageData,
+                token: token
+            )
+            
+            print("✅ QR 이미지 스캔 성공: disposalId=\(response.disposalId), status=\(response.status)")
+            
+            scanResult = response
+            
+            // 오늘 진행 현황 새로고침
+            await fetchTodayPickups()
+            return true
+            
+        } catch {
+            handleError(error)
+            return false
+        }
+    }
+    
+    // MARK: - 스캔 결과 초기화
+    func clearScanResult() {
+        scanResult = nil
     }
     
     // MARK: - ✅ 오늘 진행 현황 조회
@@ -153,38 +193,6 @@ class PickupViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 필터링된 이력
-//    var filteredHistory: [PickupHistoryItem] {
-//        pickupHistory.filter { item in
-//            let regionMatch = selectedRegion == "전체 지역" || item.region.contains(selectedRegion.replacingOccurrences(of: "서울 ", with: ""))
-//            
-//            // 월 필터링 (날짜 문자열에서 월 추출)
-//            let monthMatch: Bool
-//            if selectedMonth == "전체" {
-//                monthMatch = true
-//            } else {
-//                // "9월" -> "09"로 변환
-//                let monthNumber = selectedMonth.replacingOccurrences(of: "월", with: "")
-//                if let month = Int(monthNumber) {
-//                    let monthString = String(format: "%02d", month)
-//                    monthMatch = item.date.contains("-\(monthString)-")
-//                } else {
-//                    monthMatch = true
-//                }
-//            }
-//            
-//            return regionMatch && monthMatch
-//        }
-//    }
-    
-//    // MARK: - 상태별 필터링
-//    func filteredTodayPickups(by status: PickupItemStatus?) -> [TodayPickupItem] {
-//        guard let status = status else {
-//            return todayPickups
-//        }
-//        return todayPickups.filter { $0.pickupStatus == status }
-//    }
-//    
     // MARK: - Error Handling
     private func handleError(_ error: Error) {
         if let networkError = error as? NetworkError {

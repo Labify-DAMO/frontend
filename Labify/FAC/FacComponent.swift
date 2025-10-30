@@ -96,162 +96,68 @@ struct RegisterLabSheet: View {
 // MARK: - 담당자 초대 시트
 struct InviteManagerSheet: View {
     @Binding var isPresented: Bool
-    
     @State private var email = ""
-    @State private var selectedRole = "실험실 관리자"
-    @State private var selectedLocation = "A동 3층"
-    @State private var memo = ""
     @State private var isSubmitting = false
-    
-    let roles = ["실험실 관리자", "일반 사용자", "연구원"]
-    let locations = ["A동 3층", "A동 2층", "B동 1층", "C동 2층"]
     
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("이메일")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.gray)
-                        TextField("name@example.com", text: $email)
+                VStack(alignment: .leading, spacing: 20) {
+                    // 초대 정보 섹션
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("초대 정보")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.primary)
+                        
+                        TextField("이메일 주소", text: $email)
+                            .font(.system(size: 16))
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
-                            .padding()
-                            .background(Color(white: 0.96))
-                            .cornerRadius(12)
-                    }
-                    
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("역할")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(.gray)
-                            Menu {
-                                ForEach(roles, id: \.self) { role in
-                                    Button(role) {
-                                        selectedRole = role
-                                    }
-                                }
-                            } label: {
-                                HStack {
-                                    Text(selectedRole)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    Image(systemName: "chevron.up.chevron.down")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.gray)
-                                }
-                                .padding()
-                                .background(Color(white: 0.96))
-                                .cornerRadius(12)
-                            }
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("소속")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(.gray)
-                            Menu {
-                                ForEach(locations, id: \.self) { location in
-                                    Button(location) {
-                                        selectedLocation = location
-                                    }
-                                }
-                            } label: {
-                                HStack {
-                                    Text(selectedLocation)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    Image(systemName: "chevron.up.chevron.down")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.gray)
-                                }
-                                .padding()
-                                .background(Color(white: 0.96))
-                                .cornerRadius(12)
-                            }
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("메모(옵션)")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.gray)
-                        TextEditor(text: $memo)
-                            .frame(height: 120)
-                            .padding(8)
-                            .background(Color(white: 0.96))
+                            .padding(16)
+                            .background(Color.white)
                             .cornerRadius(12)
                             .overlay(
-                                Group {
-                                    if memo.isEmpty {
-                                        Text("권한 범위/사유 등...")
-                                            .foregroundColor(.gray.opacity(0.6))
-                                            .padding(.leading, 12)
-                                            .padding(.top, 16)
-                                    }
-                                },
-                                alignment: .topLeading
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                             )
-                    }
-                    
-                    Text("* 초대 수락 시 자동으로 권한이 부여됩니다.")
-                        .font(.system(size: 13))
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    HStack(spacing: 12) {
-                        Button("취소") {
-                            isPresented = false
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color(white: 0.95))
-                        .foregroundColor(.primary)
-                        .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
                         
-                        Button("초대 보내기") {
-                            sendInvite()
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            LinearGradient(
-                                colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                                         Color(red: 113/255, green: 100/255, blue: 230/255)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                        .disabled(email.isEmpty || isSubmitting)
-                        .opacity(email.isEmpty ? 0.5 : 1)
+                        Text("입력한 이메일 주소로 초대 링크가 전송됩니다.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.gray)
                     }
-                    .padding(.top, 20)
                 }
-                .padding()
+                .padding(20)
             }
+            .background(Color(red: 249/255, green: 250/255, blue: 252/255))
             .navigationTitle("담당자 초대")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("닫기") {
+                    Button("취소") {
                         isPresented = false
                     }
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("초대") {
+                        Task {
+                            await sendInvite()
+                        }
+                    }
+                    .disabled(email.isEmpty || isSubmitting)
+                }
             }
+            .disabled(isSubmitting)
         }
+        .presentationDragIndicator(.visible)
     }
     
-    private func sendInvite() {
+    private func sendInvite() async {
         isSubmitting = true
-        // TODO: API 호출 - POST /invites
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            isSubmitting = false
-            isPresented = false
-        }
+        // TODO: 초대 로직 구현
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        isSubmitting = false
+        isPresented = false
     }
 }
 
@@ -350,81 +256,241 @@ struct EditLabSheet: View {
 }
 
 // MARK: - 실험실 요청 카드
+// MARK: - 실험실 개설 요청 카드
+// FacComponent.swift
+
 struct LabRequestCard: View {
-    let request: LabRequest
+    let request: LabRequestItem  // ✅ LabRequest → LabRequestItem 변경
     let onConfirm: () -> Void
     let onReject: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
+            // 헤더
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(request.labName)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 17, weight: .semibold))
+                    
                     Text(request.location)
                         .font(.system(size: 14))
                         .foregroundColor(.gray)
                 }
+                
                 Spacer()
-                Text(formatDate(request.createdAt))
-                    .font(.system(size: 12))
-                    .foregroundColor(.gray)
+                
+                // ✅ status 필드 활용 가능
+                Text(statusText(request.status))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(statusColor(request.status))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(statusColor(request.status).opacity(0.1))
+                    .cornerRadius(12)
             }
             
             Divider()
             
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("요청자")
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
-                    Text(request.requesterName)
-                        .font(.system(size: 14, weight: .medium))
-                }
-                Spacer()
+            // 요청 정보
+            VStack(alignment: .leading, spacing: 8) {
+                InfoRow(title: "요청자", value: request.requesterName)
+                InfoRow(title: "요청일", value: formatDate(request.createdAt))
             }
             
-            HStack(spacing: 8) {
-                Button("거절") {
-                    onReject()
+            // ✅ PENDING 상태일 때만 액션 버튼 표시
+            if request.status == "PENDING" {
+                HStack(spacing: 12) {
+                    Button(action: onReject) {
+                        Text("거절")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(10)
+                    }
+                    
+                    Button(action: onConfirm) {
+                        Text("승인")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
+                                             Color(red: 113/255, green: 100/255, blue: 230/255)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .cornerRadius(10)
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color(white: 0.95))
-                .foregroundColor(.red)
-                .cornerRadius(8)
-                
-                Button("승인") {
-                    onConfirm()
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                    LinearGradient(
-                        colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                                 Color(red: 113/255, green: 100/255, blue: 230/255)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .foregroundColor(.white)
-                .cornerRadius(8)
             }
         }
         .padding(16)
         .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+    
+    // ✅ 헬퍼 함수들 추가
+    private func statusText(_ status: String) -> String {
+        switch status {
+        case "PENDING": return "대기중"
+        case "APPROVED": return "승인됨"
+        case "REJECTED": return "거절됨"
+        default: return status
+        }
+    }
+    
+    private func statusColor(_ status: String) -> Color {
+        switch status {
+        case "PENDING": return .orange
+        case "APPROVED": return .green
+        case "REJECTED": return .red
+        default: return .gray
+        }
     }
     
     private func formatDate(_ dateString: String) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        if let date = formatter.date(from: dateString) {
-            formatter.dateFormat = "MM/dd"
-            return formatter.string(from: date)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        guard let date = formatter.date(from: dateString) else {
+            let simpleFormatter = DateFormatter()
+            simpleFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+            if let date = simpleFormatter.date(from: dateString) {
+                let displayFormatter = DateFormatter()
+                displayFormatter.dateFormat = "yyyy.MM.dd HH:mm"
+                displayFormatter.locale = Locale(identifier: "ko_KR")
+                return displayFormatter.string(from: date)
+            }
+            return dateString
         }
-        return dateString
+        
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateFormat = "yyyy.MM.dd HH:mm"
+        displayFormatter.locale = Locale(identifier: "ko_KR")
+        return displayFormatter.string(from: date)
+    }
+}
+
+// MARK: - 시설 가입 요청 카드
+struct FacilityJoinRequestCard: View {
+    let request: FacilityJoinRequestItem
+    let onConfirm: () -> Void
+    let onReject: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // 헤더
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(request.userName)
+                        .font(.system(size: 17, weight: .semibold))
+                    
+                    Text("시설 가입 요청")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                }
+                
+                Spacer()
+                
+                // 상태 배지
+                Text(statusText(request.status))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(statusColor(request.status))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(statusColor(request.status).opacity(0.1))
+                    .cornerRadius(12)
+            }
+            
+            Divider()
+            
+            // 요청 정보
+            VStack(alignment: .leading, spacing: 8) {
+                InfoRow(title: "요청일", value: formatDate(request.createdAt))
+            }
+            
+            // 액션 버튼 (PENDING 상태일 때만 표시)
+            if request.status == "PENDING" {
+                HStack(spacing: 12) {
+                    Button(action: onReject) {
+                        Text("거절")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(10)
+                    }
+                    
+                    Button(action: onConfirm) {
+                        Text("승인")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
+                                             Color(red: 113/255, green: 100/255, blue: 230/255)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .cornerRadius(10)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+    
+    private func statusText(_ status: String) -> String {
+        switch status {
+        case "PENDING":
+            return "대기중"
+        case "APPROVED":
+            return "승인됨"
+        case "REJECTED":
+            return "거절됨"
+        default:
+            return status
+        }
+    }
+    
+    private func statusColor(_ status: String) -> Color {
+        switch status {
+        case "PENDING":
+            return .orange
+        case "APPROVED":
+            return .green
+        case "REJECTED":
+            return .red
+        default:
+            return .gray
+        }
+    }
+    
+    private func formatDate(_ dateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        guard let date = formatter.date(from: dateString) else {
+            return dateString
+        }
+        
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateFormat = "yyyy.MM.dd HH:mm"
+        displayFormatter.locale = Locale(identifier: "ko_KR")
+        return displayFormatter.string(from: date)
     }
 }
 

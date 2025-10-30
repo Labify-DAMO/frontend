@@ -24,7 +24,7 @@ final class FacViewModel: ObservableObject {
 
     @Published var facilityJoinRequests: [FacilityJoinRequestItem] = []
     @Published var labs: [Lab] = []
-    @Published var labRequests: [LabRequest] = []
+    @Published var labRequests: [LabRequestItem] = []
     @Published var facilityRelations: [FacilityRelation] = []
     @Published var pickupFacilities: [Facility] = []
 
@@ -149,11 +149,9 @@ final class FacViewModel: ObservableObject {
                 token: token
             )
             
-            // ✅ FacilityJoinRequestsResponse에서 requestId 추출
-            if let firstRequest = response.requests.first {
-                self.joinRequestId = firstRequest.id
-                print("✅ 시설 가입 요청 성공: requestId=\(firstRequest.id)")
-            }
+            // ✅ 단일 객체에서 직접 requestId 추출
+            self.joinRequestId = response.requestId
+            print("✅ 시설 가입 요청 성공: requestId=\(response.requestId), status=\(response.status)")
             
             return true
         } catch {
@@ -208,7 +206,7 @@ final class FacViewModel: ObservableObject {
                 token: token
             )
             facilityJoinRequests.removeAll { $0.id == requestId }
-            print("✅ Facility join request confirmed - relationId: \(response.relationId), userId: \(response.userId), facilityId: \(response.facilityId)")
+            print("✅ Facility join request confirmed - requestId: \(response.requestId), userId: \(response.userId), facilityId: \(response.facilityId), facilityName: \(response.facilityName), status: \(response.status)")
             isLoading = false
             return true
         } catch {
@@ -356,17 +354,10 @@ final class FacViewModel: ObservableObject {
                 status: status,
                 token: token
             )
-            // ✅ LabRequestItem을 LabRequest로 변환 (기존 코드와 호환)
-            labRequests = response.requests.map { item in
-                LabRequest(
-                    id: item.id,
-                    labName: item.labName,
-                    location: item.location,
-                    requesterName: item.requesterName,
-                    createdAt: item.createdAt
-                )
-            }
+            // ✅ 불필요한 변환 제거 - 직접 할당
+            labRequests = response.requests
             print("✅ 실험실 개설 요청 목록 조회 성공: \(response.count)건")
+            print("📊 요청 목록: \(labRequests.map { "[\($0.id)] \($0.labName) - \($0.status)" })")
         } catch {
             errorMessage = error.localizedDescription
             showError = true

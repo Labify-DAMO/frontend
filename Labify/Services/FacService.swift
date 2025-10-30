@@ -2,7 +2,7 @@
 //  FacService.swift
 //  Labify
 //
-//  Created by KITS on 10/15/25.
+//  Created by F_S on 10/15/25.
 //
 
 import Foundation
@@ -134,7 +134,7 @@ enum FacService {
         userId: Int,
         facilityCode: String,
         token: String
-    ) async throws -> FacilityJoinRequestsResponse {
+    ) async throws -> FacilityJoinRequestResponse {  // ✅ Response → RequestResponse로 변경
         let request = FacilityJoinRequest(
             userId: userId,
             facilityCode: facilityCode

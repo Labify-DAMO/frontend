@@ -2,7 +2,7 @@
 //  ManualClassificationSection.swift
 //  Labify
 //
-//  Created by KITS on 10/27/25.
+//  Created by F_S on 10/27/25.
 //
 
 import SwiftUI

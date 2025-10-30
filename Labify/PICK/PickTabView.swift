@@ -2,7 +2,7 @@
 //  PickTabView.swift
 //  Labify
 //
-//  Created by KITS on 10/14/25.
+//  Created by F_S on 10/14/25.
 //
 
 import SwiftUI
@@ -14,38 +14,37 @@ struct PickTabView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            PickupScheduleView()
+            TodayMapView()
                 .tabItem {
-                    Image(systemName: "shippingbox")
-                    Text("수거예정")
+                    Image(systemName: "map.fill")
+                    Text("오늘")
                 }
                 .tag(0)
             
-            PickupScannerView()
+            ScheduleListView()
                 .tabItem {
-                    Image(systemName: "qrcode")
-                    Text("QR")
+                    Image(systemName: "calendar")
+                    Text("예정")
                 }
                 .tag(1)
             
-//            TodayProgressView()
-//                .tabItem {
-//                    Image(systemName: "camera")
-//                    Text("진행")
-//                }
-//                .tag(2)
+            QRScanTabView()
+                .tabItem {
+                    Image(systemName: "qrcode.viewfinder")
+                    Text("QR")
+                }
+                .tag(2)
             
+//            HistoryAndProfileView()
             MyPageView()
                 .tabItem {
-                    Image(systemName: "person")
-                    Text("MY")
+                    Label("MY", systemImage: "person.fill")
                 }
                 .tag(3)
         }
-        .accentColor(.blue)
+        .accentColor(Color(red: 30/255, green: 59/255, blue: 207/255))
     }
 }
-
 #Preview {
     PickTabView(
         userInfo: UserInfo(

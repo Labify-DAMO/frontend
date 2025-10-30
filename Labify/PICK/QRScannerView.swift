@@ -7,14 +7,17 @@
 
 import SwiftUI
 import AVFoundation
+import PhotosUI
 
 struct QRScannerView: View {
     @StateObject private var pickupViewModel = PickupViewModel()
     @StateObject private var scannerViewModel = QRScannerViewModel()
+    @Environment(\.dismiss) private var dismiss
     
     @State private var showingResult = false
     @State private var scannedCode: String?
-    @State private var scanResult: QRScanResponse?
+    @State private var selectedImage: PhotosPickerItem?
+    @State private var showPhotoPicker = false
     
     var body: some View {
         NavigationStack {
@@ -48,17 +51,38 @@ struct QRScannerView: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                 }
+                
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                }
             }
             .toolbarBackground(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingResult) {
-                if let result = scanResult {
+                if let result = pickupViewModel.scanResult {
                     QRScanResultView(
                         scanResult: result,
                         onComplete: {
                             showingResult = false
                             scannerViewModel.resumeScanning()
+                            pickupViewModel.clearScanResult()
                         }
                     )
+                }
+            }
+            .photosPicker(
+                isPresented: $showPhotoPicker,
+                selection: $selectedImage,
+                matching: .images
+            )
+            .onChange(of: selectedImage) { newValue in
+                if let newValue = newValue {
+                    loadAndProcessImage(newValue)
                 }
             }
             .alert("오류", isPresented: $pickupViewModel.showError) {
@@ -116,45 +140,62 @@ struct QRScannerView: View {
     private var bottomControls: some View {
         VStack(spacing: 16) {
             if pickupViewModel.isLoading {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(1.5)
-                    .padding()
-                    .background(Color.black.opacity(0.5))
-                    .cornerRadius(12)
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(1.5)
+                    
+                    Text("처리 중...")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white)
+                }
+                .padding(20)
+                .background(Color.black.opacity(0.6))
+                .cornerRadius(16)
             }
             
             HStack(spacing: 20) {
+                // QR 촬영 (갤러리에서 선택)
+                Button(action: {
+                    scannerViewModel.pauseScanning()
+                    showPhotoPicker = true
+                }) {
+                    VStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.15))
+                                .frame(width: 56, height: 56)
+                            
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.white)
+                        }
+                        
+                        Text("QR 촬영")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                    }
+                }
+                
                 // 플래시
                 Button(action: {
                     scannerViewModel.toggleFlash()
                 }) {
                     VStack(spacing: 8) {
-                        Image(systemName: scannerViewModel.isFlashOn ? "bolt.fill" : "bolt.slash.fill")
-                            .font(.system(size: 24))
+                        ZStack {
+                            Circle()
+                                .fill(Color.black.opacity(0.3))
+                                .frame(width: 56, height: 56)
+                            
+                            Image(systemName: scannerViewModel.isFlashOn ? "bolt.fill" : "bolt.slash.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.white)
+                        }
+                        
                         Text("플래시")
-                            .font(.system(size: 12))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
                     }
-                    .foregroundColor(.white)
-                    .frame(width: 80, height: 80)
-                    .background(Color.black.opacity(0.5))
-                    .cornerRadius(16)
-                }
-                
-                // 수동 입력
-                Button(action: {
-                    // TODO: 수동 입력 기능
-                }) {
-                    VStack(spacing: 8) {
-                        Image(systemName: "keyboard")
-                            .font(.system(size: 24))
-                        Text("수동 입력")
-                            .font(.system(size: 12))
-                    }
-                    .foregroundColor(.white)
-                    .frame(width: 80, height: 80)
-                    .background(Color.black.opacity(0.5))
-                    .cornerRadius(16)
                 }
             }
             .padding(.bottom, 40)
@@ -162,6 +203,7 @@ struct QRScannerView: View {
     }
     
     // MARK: - Helper Functions
+    
     private func handleScannedCode(_ code: String) {
         print("🔍 QR 스캔됨: \(code)")
         
@@ -171,18 +213,45 @@ struct QRScannerView: View {
         Task {
             let success = await pickupViewModel.scanQRCode(code: code)
             
-            if success {
-                // 스캔 결과 표시
-                // TODO: API 응답에서 결과 가져오기
-                scanResult = QRScanResponse(
-                    disposalId: 0,
-                    status: "PICKED_UP",
-                    processedAt: ISO8601DateFormatter().string(from: Date())
-                )
+            if success, let result = pickupViewModel.scanResult {
                 showingResult = true
             } else {
-                // 에러는 alert로 표시됨
                 scannerViewModel.resumeScanning()
+            }
+        }
+    }
+    
+    private func loadAndProcessImage(_ item: PhotosPickerItem) {
+        Task {
+            do {
+                // 이미지 데이터 로드
+                guard let imageData = try await item.loadTransferable(type: Data.self) else {
+                    pickupViewModel.errorMessage = "이미지를 불러올 수 없습니다."
+                    pickupViewModel.showError = true
+                    scannerViewModel.resumeScanning()
+                    return
+                }
+                
+                print("📸 이미지 선택됨: \(imageData.count) bytes")
+                
+                // QR 코드 스캔 API 호출
+                let success = await pickupViewModel.scanQRCode(imageData: imageData)
+                
+                if success, let result = pickupViewModel.scanResult {
+                    showingResult = true
+                } else {
+                    scannerViewModel.resumeScanning()
+                }
+                
+                // 선택 초기화
+                selectedImage = nil
+                
+            } catch {
+                print("❌ 이미지 로드 실패: \(error)")
+                pickupViewModel.errorMessage = "이미지를 처리할 수 없습니다."
+                pickupViewModel.showError = true
+                scannerViewModel.resumeScanning()
+                selectedImage = nil
             }
         }
     }

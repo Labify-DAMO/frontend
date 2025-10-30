@@ -7,11 +7,10 @@
 
 import Foundation
 
-// MARK: - Pickup Service
 struct PickupService {
     static let networkManager = NetworkManager.shared
     
-    // MARK: - ✅ QR 스캔 처리 (수거 완료)
+    // MARK: - ✅ QR 스캔 처리 (수거 완료) - 문자열 방식
     /// POST /pickups/scan
     /// Body: { "code": "QRCODE_SCAN_TEST" }
     /// Response: { "disposalId": 201, "status": "PICKED_UP", "processedAt": "2025-10-18T16:54:30.1477808" }
@@ -26,6 +25,66 @@ struct PickupService {
             body: request,
             token: token
         )
+    }
+    
+    // MARK: - ✅ QR 스캔 처리 (수거 완료) - 이미지 업로드 방식
+    /// POST /pickups/scan
+    /// Body: multipart/form-data with "file" (QR 이미지)
+    /// Response: { "disposalId": 201, "status": "PICKED_UP", "processedAt": "2025-10-18T16:54:30.1477808" }
+    static func scanQRCode(
+        imageData: Data,
+        token: String
+    ) async throws -> QRScanResponse {
+        guard let url = URL(string: networkManager.baseURLString + "/pickups/scan") else {
+            print("❌ Invalid URL: \(networkManager.baseURLString)/pickups/scan")
+            throw NetworkError.invalidURL
+        }
+        
+        print("📡 Request URL: \(url)")
+        print("📦 Image size: \(imageData.count) bytes")
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        var body = Data()
+        
+        // 이미지 파일 추가
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"qr_scan.jpg\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = body
+        
+        print("📤 Sending QR scan request...")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ Invalid response type")
+            throw NetworkError.invalidResponse
+        }
+        
+        print("📥 Response status: \(httpResponse.statusCode)")
+        
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📄 Response body: \(responseString)")
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            print("❌ HTTP Error: \(httpResponse.statusCode)")
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        
+        let decoder = JSONDecoder()
+        let result = try decoder.decode(QRScanResponse.self, from: data)
+        print("✅ QR scan successful: disposalId=\(result.disposalId)")
+        return result
     }
     
     // MARK: - ✅ 오늘 진행 현황

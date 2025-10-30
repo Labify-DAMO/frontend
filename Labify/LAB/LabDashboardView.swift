@@ -250,7 +250,8 @@ struct LabDashboardView: View {
                 })
             }
             .sheet(isPresented: $showingPickupRequest) {
-                PickupRequestView()
+                //PickupRequestView()
+                LabRequestView()
             }
             .sheet(isPresented: $showingLabSelector) {
                 LabSelectorSheet(
@@ -401,16 +402,46 @@ struct LabRequestSheet: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("실험실 이름", text: $labName)
-                    TextField("위치 (예: Seoul A-101)", text: $location)
-                } header: {
-                    Text("실험실 정보")
-                } footer: {
-                    Text("시설 관리자에게 실험실 개설 요청이 전송됩니다.")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // 실험실 정보 섹션
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("실험실 정보")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.primary)
+                        
+                        VStack(spacing: 12) {
+                            TextField("실험실 이름", text: $labName)
+                                .font(.system(size: 16))
+                                .padding(16)
+                                .background(Color.white)
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                )
+                                .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
+                            
+                            TextField("위치 (예: Seoul A-101)", text: $location)
+                                .font(.system(size: 16))
+                                .padding(16)
+                                .background(Color.white)
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                )
+                                .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
+                        }
+                        
+                        Text("시설 관리자에게 실험실 개설 요청이 전송됩니다.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.gray)
+                    }
                 }
+                .padding(20)
             }
+            .background(Color(red: 249/255, green: 250/255, blue: 252/255))
             .navigationTitle("실험실 추가 요청")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

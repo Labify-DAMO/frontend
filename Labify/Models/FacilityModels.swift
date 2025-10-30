@@ -2,7 +2,7 @@
 //  FacilityModels.swift
 //  Labify
 //
-//  Created by KITS on 10/30/25.
+//  Created by F_S on 10/30/25.
 //
 
 import Foundation
@@ -49,6 +49,13 @@ struct FacilityJoinRequest: Codable {
     let facilityCode: String
 }
 
+// ✅ 시설 가입 요청 생성 응답 (단일 객체)
+struct FacilityJoinRequestResponse: Codable {
+    let requestId: Int
+    let status: String
+}
+
+// ✅ 시설 가입 요청 목록 조회 응답 (배열)
 struct FacilityJoinRequestsResponse: Codable {
     let requests: [FacilityJoinRequestItem]
     let count: Int
@@ -64,9 +71,11 @@ struct FacilityJoinRequestItem: Identifiable, Codable {
 // MARK: - 시설 가입 승인/거절 응답
 
 struct FacilityJoinConfirmResponse: Codable {
-    let relationId: Int
     let userId: Int
+    let requestId: Int
+    let status: String
     let facilityId: Int
+    let facilityName: String
 }
 
 struct FacilityJoinRejectResponse: Codable {
