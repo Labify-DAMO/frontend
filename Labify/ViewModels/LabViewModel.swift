@@ -93,32 +93,32 @@ class LabViewModel: ObservableObject {
 //        myLab = nil
 //    }
     
-    // MARK: - ✅ 실험실 등록/개설 (FAC)
-    func registerLab(name: String, location: String, facilityId: Int) async -> Bool {
-        guard let token = token else {
-            handleError(NetworkError.unauthorized)
-            return false
-        }
-        
-        isLoading = true
-        defer { isLoading = false }
-        
-        do {
-            let request = RegisterLabRequest(
-                name: name,
-                location: location,
-                facilityId: facilityId
-            )
-            
-            let newLab = try await LabService.registerLab(request: request, token: token)
-            labs.append(newLab)
-            print("✅ 실험실 등록 성공: \(newLab.name)")
-            return true
-        } catch {
-            handleError(error)
-            return false
-        }
-    }
+//    // MARK: - ✅ 실험실 등록/개설 (FAC)
+//    func registerLab(name: String, location: String, facilityId: Int) async -> Bool {
+//        guard let token = token else {
+//            handleError(NetworkError.unauthorized)
+//            return false
+//        }
+//        
+//        isLoading = true
+//        defer { isLoading = false }
+//        
+//        do {
+//            let request = RegisterLabRequest(
+//                name: name,
+//                location: location,
+//                facilityId: facilityId
+//            )
+//            
+//            let newLab = try await LabService.registerLab(request: request, token: token)
+//            labs.append(newLab)
+//            print("✅ 실험실 등록 성공: \(newLab.name)")
+//            return true
+//        } catch {
+//            handleError(error)
+//            return false
+//        }
+//    }
     
     // MARK: - ✅ 실험실 수정 (FAC)
     func updateLab(labId: Int, name: String, location: String) async -> Bool {
@@ -150,70 +150,70 @@ class LabViewModel: ObservableObject {
     }
     
     // MARK: - ✅ 실험실 개설 요청 목록 조회 (FAC)
-    func fetchLabRequests() async {
-        guard let token = token else {
-            handleError(NetworkError.unauthorized)
-            return
-        }
-        
-        isLoading = true
-        defer { isLoading = false }
-        
-        do {
-            labRequests = try await LabService.fetchLabRequests(token: token)
-            print("✅ 실험실 개설 요청 목록 조회 성공: \(labRequests.count)개")
-        } catch {
-            handleError(error)
-        }
-    }
+//    func fetchLabRequests() async {
+//        guard let token = token else {
+//            handleError(NetworkError.unauthorized)
+//            return
+//        }
+//        
+//        isLoading = true
+//        defer { isLoading = false }
+//        
+//        do {
+//            labRequests = try await LabService.fetchLabRequests(token: token)
+//            print("✅ 실험실 개설 요청 목록 조회 성공: \(labRequests.count)개")
+//        } catch {
+//            handleError(error)
+//        }
+//    }
     
     // MARK: - ✅ 실험실 개설 요청 승인 (FAC)
-    func confirmLabRequest(requestId: Int) async {
-        guard let token = token else {
-            handleError(NetworkError.unauthorized)
-            return
-        }
-        
-        isLoading = true
-        defer { isLoading = false }
-        
-        do {
-            let approvedLab = try await LabService.confirmLabRequest(
-                requestId: requestId,
-                token: token
-            )
-            
-            labRequests.removeAll { $0.id == requestId }
-            labs.append(approvedLab)
-            print("✅ 실험실 개설 요청 승인 성공: \(approvedLab.name)")
-        } catch {
-            handleError(error)
-        }
-    }
+//    func confirmLabRequest(requestId: Int) async {
+//        guard let token = token else {
+//            handleError(NetworkError.unauthorized)
+//            return
+//        }
+//        
+//        isLoading = true
+//        defer { isLoading = false }
+//        
+//        do {
+//            let approvedLab = try await LabService.confirmLabRequest(
+//                requestId: requestId,
+//                token: token
+//            )
+//            
+//            labRequests.removeAll { $0.id == requestId }
+//            labs.append(approvedLab)
+//            print("✅ 실험실 개설 요청 승인 성공: \(approvedLab.name)")
+//        } catch {
+//            handleError(error)
+//        }
+//    }
     
     // MARK: - ✅ 실험실 개설 요청 거절 (FAC)
-    func rejectLabRequest(requestId: Int) async {
-        guard let token = token else {
-            handleError(NetworkError.unauthorized)
-            return
-        }
-        
-        isLoading = true
-        defer { isLoading = false }
-        
-        do {
-            _ = try await LabService.rejectLabRequest(
-                requestId: requestId,
-                token: token
-            )
-            
-            labRequests.removeAll { $0.id == requestId }
-            print("✅ 실험실 개설 요청 거절 성공")
-        } catch {
-            handleError(error)
-        }
-    }
-    
+//    func rejectLabRequest(requestId: Int) async {
+//        guard let token = token else {
+//            handleError(NetworkError.unauthorized)
+//            return
+//        }
+//        
+//        isLoading = true
+//        defer { isLoading = false }
+//        
+//        do {
+//            _ = try await LabService.rejectLabRequest(
+//                requestId: requestId,
+//                token: token
+//            )
+//            
+//            labRequests.removeAll { $0.id == requestId }
+//            print("✅ 실험실 개설 요청 거절 성공")
+//        } catch {
+//            handleError(error)
+//        }
+//    }
+//    
     // MARK: - ========== 수거 요청 관련 ==========
     
     // MARK: - ✅ 수거 요청 생성

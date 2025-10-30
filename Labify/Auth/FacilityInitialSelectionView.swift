@@ -32,7 +32,8 @@ struct FacilityInitialSelectionView: View {
                                     )
                                 )
                                 .frame(width: 100, height: 100)
-                                .shadow(color: Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.3), radius: 20, x: 0, y: 8)
+                                .shadow(color: Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.3),
+                                        radius: 20, x: 0, y: 8)
                             
                             Image(systemName: "building.2.fill")
                                 .font(.system(size: 48))
@@ -54,35 +55,71 @@ struct FacilityInitialSelectionView: View {
                     
                     // 선택 버튼들
                     VStack(spacing: 16) {
-                        // 시설 등록
-                        Button {
-                            navigateToRegister = true
-                        } label: {
+                        
+                        // 시설 등록 (역할 제한)
+                        if userInfo.role == "FACILITY_MANAGER" {
+                            Button {
+                                navigateToRegister = true
+                            } label: {
+                                HStack(spacing: 16) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(red: 244/255, green: 247/255, blue: 255/255))
+                                            .frame(width: 56, height: 56)
+                                        
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 28))
+                                            .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("새 시설 등록")
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                        Text("새로운 시설을 생성하고 관리합니다")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.gray)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(.gray)
+                                }
+                                .padding(20)
+                                .background(Color.white)
+                                .cornerRadius(20)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                                )
+                                .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            // 다른 역할일 때는 라벨로 표시
                             HStack(spacing: 16) {
                                 ZStack {
                                     Circle()
-                                        .fill(Color(red: 244/255, green: 247/255, blue: 255/255))
+                                        .fill(Color.gray.opacity(0.1))
                                         .frame(width: 56, height: 56)
                                     
-                                    Image(systemName: "plus.circle.fill")
+                                    Image(systemName: "lock.fill")
                                         .font(.system(size: 28))
-                                        .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
+                                        .foregroundColor(.gray)
                                 }
                                 
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text("새 시설 등록")
+                                    Text("새 시설 등록 (제한됨)")
                                         .font(.system(size: 18, weight: .semibold))
-                                        .foregroundColor(.primary)
-                                    Text("새로운 시설을 생성하고 관리합니다")
+                                        .foregroundColor(.gray)
+                                    Text("시설관리자만 이용할 수 있습니다.")
                                         .font(.system(size: 14))
                                         .foregroundColor(.gray)
                                 }
                                 
                                 Spacer()
-                                
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.gray)
                             }
                             .padding(20)
                             .background(Color.white)
@@ -91,9 +128,8 @@ struct FacilityInitialSelectionView: View {
                                 RoundedRectangle(cornerRadius: 20)
                                     .stroke(Color.gray.opacity(0.15), lineWidth: 1)
                             )
-                            .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+                            .shadow(color: .black.opacity(0.03), radius: 6, x: 0, y: 3)
                         }
-                        .buttonStyle(.plain)
                         
                         // 시설 가입
                         Button {
@@ -153,7 +189,7 @@ struct FacilityInitialSelectionView: View {
                         }
                         .padding(.vertical, 8)
                         
-                        // 이미 등록되어있습니다
+                        // 이미 등록되어 있습니다
                         Button {
                             navigateToMain = true
                         } label: {

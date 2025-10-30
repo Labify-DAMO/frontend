@@ -17,7 +17,7 @@ struct WasteSummaryView: View {
     let memo: String
     let aiResult: AIClassifyResponse?
     let manualCategory: String?
-    let onRegistrationComplete: (() -> Void)?
+    let onComplete: () -> Void
     
     @State private var selectedLab: Lab?
     @State private var showingLabSelector = false
@@ -33,14 +33,14 @@ struct WasteSummaryView: View {
         memo: String,
         aiResult: AIClassifyResponse?,
         manualCategory: String?,
-        onRegistrationComplete: (() -> Void)? = nil
+        onComplete: @escaping () -> Void
     ) {
         self.weight = weight
         self.unit = unit
         self.memo = memo
         self.aiResult = aiResult
         self.manualCategory = manualCategory
-        self.onRegistrationComplete = onRegistrationComplete
+        self.onComplete = onComplete
     }
     
     private var canRegister: Bool {
@@ -48,74 +48,66 @@ struct WasteSummaryView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // 1. 실험실 선택
-                    labSelectionSection
-                    
-                    // 2. 보관 기한
-                    availableUntilSection
-                    
-                    // 3. 폐기물 정보 (AI 결과 포함)
-                    if let result = aiResult {
-                        wasteInfoSection(result: result)
-                    }
-                    
-                    // 4. 메모 (있는 경우)
-                    if !memo.isEmpty {
-                        memoSection
-                    }
+        ScrollView {
+            VStack(spacing: 24) {
+                labSelectionSection
+                availableUntilSection
+                
+                if let result = aiResult {
+                    wasteInfoSection(result: result)
                 }
-                .padding(20)
-                .padding(.bottom, 100)
+                
+                if !memo.isEmpty {
+                    memoSection
+                }
             }
-            .background(Color(red: 249/255, green: 250/255, blue: 252/255))
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.left")
-                            .foregroundColor(.primary)
-                            .font(.system(size: 17, weight: .semibold))
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("폐기물 등록 확인")
+            .padding(20)
+            .padding(.bottom, 100)
+        }
+        .background(Color(red: 249/255, green: 250/255, blue: 252/255))
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.primary)
                         .font(.system(size: 17, weight: .semibold))
                 }
             }
-            .safeAreaInset(edge: .bottom) {
-                registerButton
+            ToolbarItem(placement: .principal) {
+                Text("폐기물 등록 확인")
+                    .font(.system(size: 17, weight: .semibold))
             }
-            .sheet(isPresented: $showingLabSelector) {
-                LabSelectorBottomSheet(
-                    labs: labViewModel.labs,
-                    selectedLab: $selectedLab
-                )
+        }
+        .safeAreaInset(edge: .bottom) {
+            registerButton
+        }
+        .sheet(isPresented: $showingLabSelector) {
+            LabSelectorBottomSheet(
+                labs: labViewModel.labs,
+                selectedLab: $selectedLab
+            )
+        }
+        .sheet(isPresented: $showingDatePicker) {
+            DatePickerSheet(selectedDate: $availableUntil)
+        }
+        .task {
+            await labViewModel.fetchLabs()
+        }
+        .alert("등록 완료", isPresented: $showingSuccessAlert) {
+            Button("확인") {
+                onComplete()
             }
-            .sheet(isPresented: $showingDatePicker) {
-                DatePickerSheet(selectedDate: $availableUntil)
+        } message: {
+            if let waste = registeredWaste {
+                Text("폐기물이 성공적으로 등록되었습니다.\n등록 ID: \(waste.id)")
             }
-            .task {
-                await labViewModel.fetchLabs()
-            }
-            .alert("등록 완료", isPresented: $showingSuccessAlert) {
-                Button("확인") {
-                    onRegistrationComplete?()
-                    dismiss()
-                }
-            } message: {
-                if let waste = registeredWaste {
-                    Text("폐기물이 성공적으로 등록되었습니다.\n등록 ID: \(waste.id)")
-                }
-            }
-            .alert("오류", isPresented: $wasteViewModel.showError) {
-                Button("확인", role: .cancel) {}
-            } message: {
-                Text(wasteViewModel.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
-            }
+        }
+        .alert("오류", isPresented: $wasteViewModel.showError) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text(wasteViewModel.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
         }
     }
     
@@ -192,7 +184,7 @@ struct WasteSummaryView: View {
         }
     }
     
-    // MARK: - 폐기물 정보 섹션 (AI 결과 통합)
+    // MARK: - 폐기물 정보 섹션
     private func wasteInfoSection(result: AIClassifyResponse) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
@@ -206,7 +198,6 @@ struct WasteSummaryView: View {
             }
             
             VStack(spacing: 0) {
-                // 분류 (대분류)
                 HStack(spacing: 12) {
                     Image(systemName: "square.grid.2x2")
                         .font(.system(size: 16))
@@ -229,7 +220,6 @@ struct WasteSummaryView: View {
                 
                 Divider().padding(.leading, 52)
                 
-                // 세분류
                 HStack(spacing: 12) {
                     Image(systemName: "list.bullet.rectangle")
                         .font(.system(size: 16))
@@ -252,7 +242,6 @@ struct WasteSummaryView: View {
                 
                 Divider().padding(.leading, 52)
                 
-                // 무게
                 HStack(spacing: 12) {
                     Image(systemName: "scalemass")
                         .font(.system(size: 16))
@@ -273,7 +262,6 @@ struct WasteSummaryView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 
-                // 생물학적 위험 (is_bio가 true인 경우만)
                 if result.is_bio {
                     Divider().padding(.leading, 52)
                     
@@ -369,7 +357,6 @@ struct WasteSummaryView: View {
         
         isRegistering = true
         
-        // AI의 fine 값을 wasteTypeName으로 사용
         let disposal = await wasteViewModel.registerWaste(
             labId: lab.id,
             wasteTypeName: result.fine,
@@ -418,7 +405,8 @@ struct WasteSummaryView: View {
                 is_ocr: true,
                 ocr_text: "USE SINGLE FOR"
             ),
-            manualCategory: nil
+            manualCategory: nil,
+            onComplete: {}
         )
     }
 }

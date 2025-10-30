@@ -20,9 +20,9 @@ struct FacilityJoinRequestCard: View {
                     Text(request.userName)
                         .font(.system(size: 17, weight: .semibold))
                     
-                    Text(request.userEmail)
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
+//                    Text(request.userEmail)
+//                        .font(.system(size: 14))
+//                        .foregroundColor(.gray)
                 }
                 
                 Spacer()
@@ -41,8 +41,8 @@ struct FacilityJoinRequestCard: View {
             
             // 요청 정보
             VStack(alignment: .leading, spacing: 8) {
-                FInfoRow(icon: "number.circle", title: "시설 코드", value: request.facilityCode)
-                FInfoRow(icon: "calendar", title: "요청일", value: formatDate(request.requestedAt))
+//                FInfoRow(icon: "number.circle", title: "시설 코드", value: request.facilityCode)
+                FInfoRow(icon: "calendar", title: "요청일", value: formatDate(request.createdAt))
             }
             
             // 액션 버튼 (PENDING 상태일 때만 표시)
@@ -153,9 +153,9 @@ private struct FInfoRow: View {
             request: FacilityJoinRequestItem(
                 id: 1,
                 userName: "김연구",
-                userEmail: "kim@research.com",
-                facilityCode: "8XDGRA",
-                requestedAt: "2025-10-28T10:30:00Z",
+                //userEmail: "kim@research.com",
+                //facilityCode: "8XDGRA",
+                createdAt: "2025-10-28T10:30:00Z",
                 status: "PENDING"
             ),
             onConfirm: { print("승인") },
@@ -166,9 +166,9 @@ private struct FInfoRow: View {
             request: FacilityJoinRequestItem(
                 id: 2,
                 userName: "박실험",
-                userEmail: "park@lab.com",
-                facilityCode: "AB12CD",
-                requestedAt: "2025-10-27T14:20:00Z",
+                //userEmail: "park@lab.com",
+                //facilityCode: "AB12CD",
+                createdAt: "2025-10-27T14:20:00Z",
                 status: "APPROVED"
             ),
             onConfirm: { print("승인") },

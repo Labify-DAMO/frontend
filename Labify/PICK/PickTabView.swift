@@ -28,12 +28,12 @@ struct PickTabView: View {
                 }
                 .tag(1)
             
-            TodayProgressView()
-                .tabItem {
-                    Image(systemName: "camera")
-                    Text("진행")
-                }
-                .tag(2)
+//            TodayProgressView()
+//                .tabItem {
+//                    Image(systemName: "camera")
+//                    Text("진행")
+//                }
+//                .tag(2)
             
             MyPageView()
                 .tabItem {

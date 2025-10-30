@@ -31,6 +31,9 @@ final class FacViewModel: ObservableObject {
     // ✅ 가입 요청 결과
     @Published var joinRequestId: Int?
     
+    // 시설 코드로 수거업체 조회
+    @Published var searchedPickupFacility: Facility?
+    
     // MARK: - Token
     
     private var token: String? {
@@ -146,9 +149,12 @@ final class FacViewModel: ObservableObject {
                 token: token
             )
             
-            self.joinRequestId = response.requestId
+            // ✅ FacilityJoinRequestsResponse에서 requestId 추출
+            if let firstRequest = response.requests.first {
+                self.joinRequestId = firstRequest.id
+                print("✅ 시설 가입 요청 성공: requestId=\(firstRequest.id)")
+            }
             
-            print("✅ 시설 가입 요청 성공: requestId=\(response.requestId), status=\(response.status)")
             return true
         } catch {
             self.errorMessage = "시설 가입 요청 실패: \(error.localizedDescription)"
@@ -158,8 +164,8 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    /// ✅ 시설 가입 요청 목록 조회
-    func fetchFacilityJoinRequests() async {
+    /// ✅ 시설 가입 요청 목록 조회 (status 파라미터 추가)
+    func fetchFacilityJoinRequests(status: String = "PENDING") async {
         guard let token = token, !token.isEmpty else {
             errorMessage = "인증 토큰이 없습니다."
             showError = true
@@ -170,8 +176,12 @@ final class FacViewModel: ObservableObject {
         errorMessage = ""
         
         do {
-            facilityJoinRequests = try await FacService.fetchFacilityJoinRequests(token: token)
-            print("✅ 시설 가입 요청 목록 불러오기 성공: \(facilityJoinRequests.count)건")
+            let response = try await FacService.fetchFacilityJoinRequests(
+                status: status,
+                token: token
+            )
+            facilityJoinRequests = response.requests
+            print("✅ 시설 가입 요청 목록 불러오기 성공: \(response.count)건")
         } catch {
             errorMessage = error.localizedDescription
             showError = true
@@ -181,7 +191,7 @@ final class FacViewModel: ObservableObject {
         isLoading = false
     }
     
-    /// ✅ 시설 가입 요청 수락
+    /// ✅ 시설 가입 요청 수락 (응답 타입 변경)
     func confirmFacilityJoinRequest(requestId: Int) async -> Bool {
         guard let token = token, !token.isEmpty else {
             errorMessage = "인증 토큰이 없습니다."
@@ -198,7 +208,7 @@ final class FacViewModel: ObservableObject {
                 token: token
             )
             facilityJoinRequests.removeAll { $0.id == requestId }
-            print("✅ Facility join request confirmed: \(response)")
+            print("✅ Facility join request confirmed - relationId: \(response.relationId), userId: \(response.userId), facilityId: \(response.facilityId)")
             isLoading = false
             return true
         } catch {
@@ -210,7 +220,8 @@ final class FacViewModel: ObservableObject {
         }
     }
 
-    /// ✅ 시설 가입 요청 거절
+
+    /// ✅ 시설 가입 요청 거절 (응답 타입 변경)
     func rejectFacilityJoinRequest(requestId: Int) async -> Bool {
         guard let token = token, !token.isEmpty else {
             errorMessage = "인증 토큰이 없습니다."
@@ -227,7 +238,7 @@ final class FacViewModel: ObservableObject {
                 token: token
             )
             facilityJoinRequests.removeAll { $0.id == requestId }
-            print("✅ Facility join request rejected: \(response)")
+            print("✅ Facility join request rejected - requestId: \(response.requestId), status: \(response.status)")
             isLoading = false
             return true
         } catch {
@@ -329,8 +340,8 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    /// 실험실 개설 요청 목록 조회
-    func fetchLabRequests() async {
+    /// ✅ 실험실 개설 요청 목록 조회 (status 파라미터 추가)
+    func fetchLabRequests(status: String = "PENDING") async {
         guard let token = token, !token.isEmpty else {
             errorMessage = "인증 토큰이 없습니다."
             showError = true
@@ -341,8 +352,21 @@ final class FacViewModel: ObservableObject {
         errorMessage = ""
         
         do {
-            labRequests = try await FacService.fetchLabRequests(token: token)
-            print("✅ 실험실 개설 요청 목록 조회 성공: \(labRequests.count)건")
+            let response = try await FacService.fetchLabRequests(
+                status: status,
+                token: token
+            )
+            // ✅ LabRequestItem을 LabRequest로 변환 (기존 코드와 호환)
+            labRequests = response.requests.map { item in
+                LabRequest(
+                    id: item.id,
+                    labName: item.labName,
+                    location: item.location,
+                    requesterName: item.requesterName,
+                    createdAt: item.createdAt
+                )
+            }
+            print("✅ 실험실 개설 요청 목록 조회 성공: \(response.count)건")
         } catch {
             errorMessage = error.localizedDescription
             showError = true
@@ -352,7 +376,7 @@ final class FacViewModel: ObservableObject {
         isLoading = false
     }
     
-    /// 실험실 개설 요청 승인
+    /// ✅ 실험실 개설 요청 승인 (응답 타입 변경)
     func confirmLabRequest(requestId: Int) async -> Bool {
         guard let token = token, !token.isEmpty else {
             errorMessage = "인증 토큰이 없습니다."
@@ -364,10 +388,17 @@ final class FacViewModel: ObservableObject {
         errorMessage = ""
         
         do {
-            let newLab = try await FacService.confirmLabRequest(requestId: requestId, token: token)
+            let response = try await FacService.confirmLabRequest(requestId: requestId, token: token)
+            // ✅ LabConfirmResponse를 Lab으로 변환
+            let newLab = Lab(
+                id: response.labId,
+                name: response.name,
+                location: response.location,
+                facilityId: response.facilityId
+            )
             labs.append(newLab)
             labRequests.removeAll { $0.id == requestId }
-            print("✅ 실험실 개설 요청 승인 성공")
+            print("✅ 실험실 개설 요청 승인 성공 - labId: \(response.labId), name: \(response.name)")
             isLoading = false
             return true
         } catch {
@@ -379,7 +410,7 @@ final class FacViewModel: ObservableObject {
         }
     }
     
-    /// 실험실 개설 요청 거절
+    /// ✅ 실험실 개설 요청 거절 (변경 없음)
     func rejectLabRequest(requestId: Int) async -> Bool {
         guard let token = token, !token.isEmpty else {
             errorMessage = "인증 토큰이 없습니다."
@@ -391,9 +422,9 @@ final class FacViewModel: ObservableObject {
         errorMessage = ""
         
         do {
-            _ = try await FacService.rejectLabRequest(requestId: requestId, token: token)
+            let response = try await FacService.rejectLabRequest(requestId: requestId, token: token)
             labRequests.removeAll { $0.id == requestId }
-            print("✅ 실험실 개설 요청 거절 성공")
+            print("✅ 실험실 개설 요청 거절 성공 - requestId: \(response.requestId), status: \(response.status)")
             isLoading = false
             return true
         } catch {
@@ -419,8 +450,6 @@ final class FacViewModel: ObservableObject {
     // MARK: - 시설 관계 관련 함수
     
     /// 시설 코드로 수거업체 조회
-    @Published var searchedPickupFacility: Facility?
-
     func searchFacilityByCode(facilityCode: String) async -> Bool {
         guard let token = token, !token.isEmpty else {
             errorMessage = "인증 토큰이 없습니다."
@@ -456,10 +485,10 @@ final class FacViewModel: ObservableObject {
 //            showError = true
 //            return
 //        }
-//        
+//
 //        isLoading = true
 //        errorMessage = ""
-//        
+//
 //        do {
 //            facilityRelations = try await FacService.fetchFacilityRelations(token: token)
 //            print("✅ 시설 관계 목록 조회 성공: \(facilityRelations.count)건")
@@ -468,7 +497,7 @@ final class FacViewModel: ObservableObject {
 //            showError = true
 //            print("❌ Failed to fetch facility relations: \(error)")
 //        }
-//        
+//
 //        isLoading = false
 //    }
     
@@ -495,7 +524,7 @@ final class FacViewModel: ObservableObject {
             
            // await fetchFacilityRelations()
             
-            print("✅ Facility relation created: \(newRelation)")
+            print("✅ Facility relation created: relationshipId=\(newRelation.relationshipId)")
             isLoading = false
             return true
         } catch {
@@ -543,10 +572,10 @@ final class FacViewModel: ObservableObject {
 //            showError = true
 //            return
 //        }
-//        
+//
 //        isLoading = true
 //        errorMessage = ""
-//        
+//
 //        do {
 //            pickupFacilities = try await FacService.fetchPickupFacilities(token: token)
 //            print("✅ 수거업체 목록 조회 성공: \(pickupFacilities.count)개")
@@ -555,7 +584,7 @@ final class FacViewModel: ObservableObject {
 //            showError = true
 //            print("❌ Failed to fetch pickup facilities: \(error)")
 //        }
-//        
+//
 //        isLoading = false
 //    }
 }

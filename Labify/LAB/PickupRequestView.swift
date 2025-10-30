@@ -564,24 +564,24 @@ struct WasteSelectionCard: View {
                 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(waste.name)
-                            .font(.system(size: 17, weight: .semibold))
+//                        Text(waste.name)
+//                            .font(.system(size: 17, weight: .semibold))
                         Spacer()
                         Text("\(String(format: "%.1f", waste.weight))\(waste.unit)")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(.gray)
                     }
                     
-                    HStack(spacing: 4) {
-                        Text("Lab ID: \(waste.labId)")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                        Text("·")
-                            .foregroundColor(.gray)
-                        Text(waste.status)
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                    }
+//                    HStack(spacing: 4) {
+//                        Text("Lab ID: \(waste.labId)")
+//                            .font(.system(size: 14))
+//                            .foregroundColor(.gray)
+//                        Text("·")
+//                            .foregroundColor(.gray)
+//                        Text(waste.status)
+//                            .font(.system(size: 14))
+//                            .foregroundColor(.gray)
+//                    }
                 }
             }
             .padding(16)

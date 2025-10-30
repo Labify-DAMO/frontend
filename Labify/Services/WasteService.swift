@@ -102,10 +102,9 @@ struct WasteService {
             token: token
         )
     }
-        
     
     // MARK: - ✅ 폐기물 목록 조회 (상태별 필터링)
-    static func fetchDisposalItems(labId: Int? = nil, status: String? = nil, token: String) async throws -> DisposalListResponse {
+    static func fetchDisposalItems(labId: Int? = nil, status: DisposalStatus? = nil, token: String) async throws -> DisposalListResponse {
         var endpoint = "/disposals"
         var queryParams: [String] = []
         
@@ -114,15 +113,26 @@ struct WasteService {
         }
         
         if let status = status {
-            queryParams.append("status=\(status)")
+            queryParams.append("status=\(status.rawValue)")
         }
         
         if !queryParams.isEmpty {
             endpoint += "?" + queryParams.joined(separator: "&")
         }
         
+        print("📡 Fetching disposals: \(endpoint)")
+        
         return try await networkManager.request(
             endpoint: endpoint,
+            method: "GET",
+            token: token
+        )
+    }
+    
+    // MARK: - ✅ 특정 폐기물 상세 조회
+    static func fetchDisposalDetail(disposalItemId: Int, token: String) async throws -> DisposalDetail {
+        return try await networkManager.request(
+            endpoint: "/disposals/\(disposalItemId)",
             method: "GET",
             token: token
         )
@@ -132,24 +142,11 @@ struct WasteService {
     // TODO: API 개발 대기 중
     static func deleteWaste(wasteId: Int, token: String) async throws {
         // API 개발 대기
+        throw NetworkError.notImplemented
     }
 }
 
-// MARK: - Request Models
-// Note: RegisterWasteDetailRequest가 다른 파일에 정의되어 있다면 이 부분을 제거하세요
-
-struct UpdateWasteDetailRequest: Codable {
-    let weight: Double?
-    let unit: String?
-    let memo: String?
-    let status: String?
-    let availableUntil: String?
-    
-    init(weight: Double? = nil, unit: String? = nil, memo: String? = nil, status: String? = nil, availableUntil: String? = nil) {
-        self.weight = weight
-        self.unit = unit
-        self.memo = memo
-        self.status = status
-        self.availableUntil = availableUntil
-    }
+// MARK: - Network Error Extension
+extension NetworkError {
+    static let notImplemented = NetworkError.invalidResponse
 }

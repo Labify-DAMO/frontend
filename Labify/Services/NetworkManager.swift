@@ -42,7 +42,13 @@ class NetworkManager {
     static let shared = NetworkManager()
     
     // 🔥 실제 백엔드 서버 주소
+    //private let baseURL = "http://localhost:8080"
+
     private let baseURL = "http://localhost:8080"
+    func getBaseURL() -> String {
+        return baseURL
+    }
+
     
     var baseURLString: String {
         return baseURL

@@ -11,6 +11,7 @@ import PhotosUI
 struct LabRegistrationView: View {
     @Environment(\.dismiss) var dismiss
     @StateObject private var viewModel = WasteViewModel()
+    let onComplete: () -> Void
     
     @State private var selectedCategory = ""
     @State private var manualCategory = ""
@@ -27,10 +28,13 @@ struct LabRegistrationView: View {
     
     let categories = ["감염성", "화학", "일반"]
     
+    private var canProceed: Bool {
+        viewModel.aiClassifyResult != nil || !manualCategory.isEmpty
+    }
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // 카메라 영역
                 WasteCameraSection(
                     selectedImage: $selectedImage,
                     isImageExpanded: $isImageExpanded,
@@ -40,40 +44,7 @@ struct LabRegistrationView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // AI 분류 결과
-                        if let result = viewModel.aiClassifyResult {
-                            AIResultSection(
-                                result: result,
-                                isImageExpanded: isImageExpanded,
-                                onCollapseImage: {
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                        isImageExpanded = false
-                                    }
-                                }
-                            )
-                        }
-                        
-                        // 분석 중 표시
-                        if isAnalyzing {
-                            AnalyzingSection()
-                        }
-                        
-                        // AI 분류 시작 버튼
-                        if selectedImage != nil && viewModel.aiClassifyResult == nil && !isAnalyzing {
-                            analyzeButton
-                        }
-                        
-                        // 수동 분류 버튼 및 섹션
-                        if viewModel.aiClassifyResult != nil {
-                            manualClassificationToggle
-                        }
-                        
-                        if showManualClassification {
-                            ManualClassificationSection(
-                                categories: categories,
-                                selectedCategory: $manualCategory
-                            )
-                        }
+                        classificationSections()
                     }
                     .padding(20)
                     .padding(.bottom, 100)
@@ -84,7 +55,7 @@ struct LabRegistrationView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "xmark")
                             .foregroundColor(.primary)
                             .font(.system(size: 17, weight: .semibold))
                     }
@@ -98,7 +69,11 @@ struct LabRegistrationView: View {
                 nextButton
             }
             .navigationDestination(isPresented: $navigateToWeight) {
-                WeightInputView(aiResult: viewModel.aiClassifyResult, manualCategory: manualCategory)
+                WeightInputView(
+                    aiResult: viewModel.aiClassifyResult,
+                    manualCategory: manualCategory,
+                    onComplete: onComplete
+                )
             }
             .sheet(isPresented: $showingActionSheet) {
                 ImageSourceSheet(
@@ -116,29 +91,29 @@ struct LabRegistrationView: View {
                 ImagePicker(image: $selectedImage)
             }
             .fullScreenCover(isPresented: $showingImageConfirm) {
-                if let image = capturedImage {
-                    ImageConfirmView(
-                        image: image,
-                        onConfirm: {
+                ImageConfirmHost(
+                    capturedImage: $capturedImage,
+                    onConfirm: {
+                        if let image = capturedImage {
                             selectedImage = image
-                            showingImageConfirm = false
-                            capturedImage = nil
-                        },
-                        onRetake: {
-                            showingImageConfirm = false
-                            capturedImage = nil
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                showingCamera = true
-                            }
-                        },
-                        onCancel: {
-                            showingImageConfirm = false
-                            capturedImage = nil
                         }
-                    )
-                }
+                        showingImageConfirm = false
+                        capturedImage = nil
+                    },
+                    onRetake: {
+                        showingImageConfirm = false
+                        capturedImage = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            showingCamera = true
+                        }
+                    },
+                    onCancel: {
+                        showingImageConfirm = false
+                        capturedImage = nil
+                    }
+                )
             }
-            .onChange(of: capturedImage) { newImage in
+            .onChange(of: capturedImage) { _, newImage in
                 if newImage != nil {
                     showingImageConfirm = true
                 }
@@ -148,6 +123,41 @@ struct LabRegistrationView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
             }
+        }
+    }
+    
+    // MARK: - 분리된 Section Builder
+    @ViewBuilder
+    private func classificationSections() -> some View {
+        if let result = viewModel.aiClassifyResult {
+            AIResultSection(
+                result: result,
+                isImageExpanded: isImageExpanded,
+                onCollapseImage: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        isImageExpanded = false
+                    }
+                }
+            )
+        }
+        
+        if isAnalyzing {
+            AnalyzingSection()
+        }
+        
+        if selectedImage != nil && viewModel.aiClassifyResult == nil && !isAnalyzing {
+            analyzeButton
+        }
+        
+        if viewModel.aiClassifyResult != nil {
+            manualClassificationToggle
+        }
+        
+        if showManualClassification {
+            ManualClassificationSection(
+                categories: categories,
+                selectedCategory: $manualCategory
+            )
         }
     }
     
@@ -166,16 +176,20 @@ struct LabRegistrationView: View {
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
-            .background(
-                LinearGradient(
-                    colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                             Color(red: 113/255, green: 100/255, blue: 230/255)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
+            .background(aiButtonGradient)
             .cornerRadius(16)
         }
+    }
+    
+    private var aiButtonGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 30/255, green: 59/255, blue: 207/255),
+                Color(red: 113/255, green: 100/255, blue: 230/255)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
     }
     
     private var manualClassificationToggle: some View {
@@ -209,29 +223,35 @@ struct LabRegistrationView: View {
     }
     
     private var nextButton: some View {
-        Button(action: {
-            navigateToWeight = true
-        }) {
-            Text("다음")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(
-                    LinearGradient(
-                        colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                                 Color(red: 113/255, green: 100/255, blue: 230/255)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .cornerRadius(16)
+        VStack(spacing: 0) {
+            Button(action: {
+                navigateToWeight = true
+            }) {
+                Text("다음")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(nextButtonBackground)
+                    .cornerRadius(16)
+            }
+            .disabled(!canProceed)
+            .opacity(canProceed ? 1.0 : 0.5)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
-        .disabled(viewModel.aiClassifyResult == nil && manualCategory.isEmpty)
-        .opacity((viewModel.aiClassifyResult == nil && manualCategory.isEmpty) ? 0.5 : 1.0)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
         .background(Color.white)
+    }
+    
+    private var nextButtonBackground: some View {
+        LinearGradient(
+            colors: [
+                Color(red: 30/255, green: 59/255, blue: 207/255),
+                Color(red: 113/255, green: 100/255, blue: 230/255)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
     
     // MARK: - Helper Methods
@@ -308,6 +328,28 @@ struct LabRegistrationView: View {
     }
 }
 
+private struct ImageConfirmHost: View {
+    @Binding var capturedImage: UIImage?
+    let onConfirm: () -> Void
+    let onRetake: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        Group {
+            if let image = capturedImage {
+                ImageConfirmView(
+                    image: image,
+                    onConfirm: onConfirm,
+                    onRetake: onRetake,
+                    onCancel: onCancel
+                )
+            } else {
+                Color.clear.ignoresSafeArea()
+            }
+        }
+    }
+}
+
 #Preview {
-    LabRegistrationView()
+    LabRegistrationView(onComplete: {})
 }

@@ -55,15 +55,15 @@ struct LabService {
 //        return nil
 //    }
     
-    // MARK: - ✅ 실험실 등록/개설 (FAC)
-    static func registerLab(request: RegisterLabRequest, token: String) async throws -> Lab {
-        return try await networkManager.request(
-            endpoint: "/labs/register",
-            method: "POST",
-            body: request,
-            token: token
-        )
-    }
+//    // MARK: - ✅ 실험실 등록/개설 (FAC)
+//    static func registerLab(request: RegisterLabRequest, token: String) async throws -> Lab {
+//        return try await networkManager.request(
+//            endpoint: "/labs/register",
+//            method: "POST",
+//            body: request,
+//            token: token
+//        )
+//    }
     
     // MARK: - ✅ 실험실 수정 (FAC)
     static func updateLab(labId: Int, request: UpdateLabRequest, token: String) async throws -> Lab {
@@ -75,32 +75,24 @@ struct LabService {
         )
     }
     
-    // MARK: - ✅ 실험실 개설 요청 목록 조회 (FAC)
-    static func fetchLabRequests(token: String) async throws -> [LabRequest] {
-        return try await networkManager.request(
-            endpoint: "/labs/requests",
-            method: "GET",
-            token: token
-        )
-    }
     
-    // MARK: - ✅ 실험실 개설 요청 승인 (FAC)
-    static func confirmLabRequest(requestId: Int, token: String) async throws -> Lab {
-        return try await networkManager.request(
-            endpoint: "/labs/requests/\(requestId)/confirm",
-            method: "PATCH",
-            token: token
-        )
-    }
-    
-    // MARK: - ✅ 실험실 개설 요청 거절 (FAC)
-    static func rejectLabRequest(requestId: Int, token: String) async throws -> LabRequestResponse {
-        return try await networkManager.request(
-            endpoint: "/labs/requests/\(requestId)/reject",
-            method: "PATCH",
-            token: token
-        )
-    }
+//    // MARK: - ✅ 실험실 개설 요청 승인 (FAC)
+//    static func confirmLabRequest(requestId: Int, token: String) async throws -> Lab {
+//        return try await networkManager.request(
+//            endpoint: "/labs/requests/\(requestId)/confirm",
+//            method: "PATCH",
+//            token: token
+//        )
+//    }
+//    
+//    // MARK: - ✅ 실험실 개설 요청 거절 (FAC)
+//    static func rejectLabRequest(requestId: Int, token: String) async throws -> LabRequestResponse {
+//        return try await networkManager.request(
+//            endpoint: "/labs/requests/\(requestId)/reject",
+//            method: "PATCH",
+//            token: token
+//        )
+//    }
     
     // MARK: - ========== 수거 요청 API ==========
     

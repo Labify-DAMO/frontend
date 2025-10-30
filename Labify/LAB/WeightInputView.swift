@@ -14,21 +14,27 @@ struct WeightInputView: View {
     @State private var note = ""
     @State private var navigateToSummary = false
     
-    // AI 분류 결과와 수동 분류를 전달받기 위한 프로퍼티
     let aiResult: AIClassifyResponse?
     let manualCategory: String?
+    let onComplete: () -> Void
+    
+    private var isWeightValid: Bool {
+        weight > 0
+    }
     
     private var nextButtonGradient: LinearGradient {
-        if weight == 0 {
+        if isWeightValid {
             return LinearGradient(
-                colors: [Color.gray, Color.gray],
+                colors: [
+                    Color(red: 30/255, green: 59/255, blue: 207/255),
+                    Color(red: 113/255, green: 100/255, blue: 230/255)
+                ],
                 startPoint: .top,
                 endPoint: .bottom
             )
         } else {
             return LinearGradient(
-                colors: [Color(red: 30/255, green: 59/255, blue: 207/255),
-                         Color(red: 113/255, green: 100/255, blue: 230/255)],
+                colors: [Color.gray, Color.gray],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -51,7 +57,7 @@ struct WeightInputView: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 20)
             
-            if weight == 0 {
+            if !isWeightValid {
                 errorMessage
             }
         }
@@ -59,7 +65,10 @@ struct WeightInputView: View {
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.3), lineWidth: 1.5)
+                .stroke(
+                    Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.3),
+                    lineWidth: 1.5
+                )
         )
     }
     
@@ -139,22 +148,18 @@ struct WeightInputView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            // 무게 입력
             weightInputCard
             
-            // 빠른 선택
             HStack(spacing: 12) {
                 QuickSelectButton(value: 0.5, weight: $weight)
                 QuickSelectButton(value: 1.0, weight: $weight)
                 QuickSelectButton(value: 1.5, weight: $weight)
             }
             
-            // 비고
             noteSection
             
             Spacer()
             
-            // 다음 버튼
             Button(action: {
                 navigateToSummary = true
             }) {
@@ -166,7 +171,7 @@ struct WeightInputView: View {
                     .background(nextButtonGradient)
                     .cornerRadius(16)
             }
-            .disabled(weight == 0)
+            .disabled(!isWeightValid)
         }
         .padding(20)
         .background(Color.white)
@@ -190,10 +195,11 @@ struct WeightInputView: View {
         .navigationDestination(isPresented: $navigateToSummary) {
             WasteSummaryView(
                 weight: weight,
-                unit: unit,  // ✅ unit 파라미터 추가
+                unit: unit,
                 memo: note,
                 aiResult: aiResult,
-                manualCategory: manualCategory
+                manualCategory: manualCategory,
+                onComplete: onComplete
             )
         }
     }
@@ -224,6 +230,10 @@ struct QuickSelectButton: View {
 
 #Preview {
     NavigationStack {
-        WeightInputView(aiResult: nil, manualCategory: "화학")
+        WeightInputView(
+            aiResult: nil,
+            manualCategory: "화학",
+            onComplete: {}
+        )
     }
 }

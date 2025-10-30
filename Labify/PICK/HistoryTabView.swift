@@ -126,19 +126,19 @@ struct HistoryTabView: View {
             }
             
             // 리스트
-            ScrollView {
-                if viewModel.filteredHistory.isEmpty && !viewModel.isLoading {
-                    emptyStateView
-                } else {
-                    VStack(spacing: 12) {
-                        ForEach(viewModel.filteredHistory) { item in
-                            HistoryItemRow(item: item)
-                        }
-                    }
-                    .padding()
-                }
-            }
-            .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+//            ScrollView {
+//                if viewModel.filteredHistory.isEmpty && !viewModel.isLoading {
+//                    emptyStateView
+//                } else {
+//                    VStack(spacing: 12) {
+//                        ForEach(viewModel.filteredHistory) { item in
+//                            HistoryItemRow(item: item)
+//                        }
+//                    }
+//                    .padding()
+//                }
+//            }
+//            .background(Color(red: 0.98, green: 0.98, blue: 0.98))
         }
         .task {
             await viewModel.fetchPickupHistory()
@@ -175,9 +175,9 @@ struct HistoryItemRow: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\(item.date) · \(item.labName) · \(item.labLocation)")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.black)
+//            Text("\(item.date) · \(item.labName) · \(item.labLocation)")
+//                .font(.system(size: 15, weight: .medium))
+//                .foregroundColor(.black)
             
             Text(item.facilityAddress)
                 .font(.system(size: 13))

@@ -154,37 +154,37 @@ class PickupViewModel: ObservableObject {
     }
     
     // MARK: - 필터링된 이력
-    var filteredHistory: [PickupHistoryItem] {
-        pickupHistory.filter { item in
-            let regionMatch = selectedRegion == "전체 지역" || item.region.contains(selectedRegion.replacingOccurrences(of: "서울 ", with: ""))
-            
-            // 월 필터링 (날짜 문자열에서 월 추출)
-            let monthMatch: Bool
-            if selectedMonth == "전체" {
-                monthMatch = true
-            } else {
-                // "9월" -> "09"로 변환
-                let monthNumber = selectedMonth.replacingOccurrences(of: "월", with: "")
-                if let month = Int(monthNumber) {
-                    let monthString = String(format: "%02d", month)
-                    monthMatch = item.date.contains("-\(monthString)-")
-                } else {
-                    monthMatch = true
-                }
-            }
-            
-            return regionMatch && monthMatch
-        }
-    }
+//    var filteredHistory: [PickupHistoryItem] {
+//        pickupHistory.filter { item in
+//            let regionMatch = selectedRegion == "전체 지역" || item.region.contains(selectedRegion.replacingOccurrences(of: "서울 ", with: ""))
+//            
+//            // 월 필터링 (날짜 문자열에서 월 추출)
+//            let monthMatch: Bool
+//            if selectedMonth == "전체" {
+//                monthMatch = true
+//            } else {
+//                // "9월" -> "09"로 변환
+//                let monthNumber = selectedMonth.replacingOccurrences(of: "월", with: "")
+//                if let month = Int(monthNumber) {
+//                    let monthString = String(format: "%02d", month)
+//                    monthMatch = item.date.contains("-\(monthString)-")
+//                } else {
+//                    monthMatch = true
+//                }
+//            }
+//            
+//            return regionMatch && monthMatch
+//        }
+//    }
     
-    // MARK: - 상태별 필터링
-    func filteredTodayPickups(by status: PickupItemStatus?) -> [TodayPickupItem] {
-        guard let status = status else {
-            return todayPickups
-        }
-        return todayPickups.filter { $0.pickupStatus == status }
-    }
-    
+//    // MARK: - 상태별 필터링
+//    func filteredTodayPickups(by status: PickupItemStatus?) -> [TodayPickupItem] {
+//        guard let status = status else {
+//            return todayPickups
+//        }
+//        return todayPickups.filter { $0.pickupStatus == status }
+//    }
+//    
     // MARK: - Error Handling
     private func handleError(_ error: Error) {
         if let networkError = error as? NetworkError {

@@ -21,9 +21,9 @@ struct LabTabView: View {
 //                .tabItem {
 //                    Label("QR 코드", systemImage: "qrcode")
 //                }
-            LabRegistrationView()
+            LabRequestView()
                 .tabItem {
-                    Label("등록", systemImage: "plus.circle")
+                    Label("요청", systemImage: "paperplane")
                 }
             
             LabHistoryView()

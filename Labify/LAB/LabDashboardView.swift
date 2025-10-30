@@ -167,8 +167,8 @@ struct LabDashboardView: View {
                                 .shadow(color: Color(red: 30/255, green: 59/255, blue: 207/255).opacity(0.3), radius: 8, x: 0, y: 4)
                         }
                         
-                        Button(action: {}) {
-                            Text("등록 이력")
+                        NavigationLink(destination: QRGenerationView()) {
+                            Text("QR 생성")
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundColor(Color(red: 30/255, green: 59/255, blue: 207/255))
                                 .frame(maxWidth: .infinity)
@@ -244,8 +244,10 @@ struct LabDashboardView: View {
                         .font(.system(size: 17, weight: .semibold))
                 }
             }
-            .sheet(isPresented: $showingWasteRegistration) {
-                LabRegistrationView()
+            .fullScreenCover(isPresented: $showingWasteRegistration) {
+                LabRegistrationView(onComplete: {
+                    showingWasteRegistration = false
+                })
             }
             .sheet(isPresented: $showingPickupRequest) {
                 PickupRequestView()
@@ -261,7 +263,6 @@ struct LabDashboardView: View {
             }
             .task {
                 await viewModel.fetchLabs()
-                // 초기 로드 시 전체 선택
                 if selectedLabIds.isEmpty {
                     selectedLabIds = Set(viewModel.labs.map { $0.id })
                 }
@@ -293,7 +294,6 @@ struct LabSelectorSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // 전체 선택 버튼
                 Button(action: {
                     if tempSelectedLabIds.count == labs.count {
                         tempSelectedLabIds.removeAll()
@@ -316,7 +316,6 @@ struct LabSelectorSheet: View {
                 
                 Divider()
                 
-                // 실험실 목록
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(labs) { lab in
@@ -352,7 +351,6 @@ struct LabSelectorSheet: View {
                     }
                 }
                 
-                // 하단 버튼
                 VStack(spacing: 12) {
                     Button(action: {
                         selectedLabIds = tempSelectedLabIds
@@ -437,7 +435,6 @@ struct LabRequestSheet: View {
     private func submitRequest() async {
         isSubmitting = true
         
-        // TODO: facilityId와 managerId를 실제 값으로 교체
         let success = await viewModel.requestLabCreation(
             facilityId: 1,
             name: labName,
